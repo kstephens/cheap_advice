@@ -1,3 +1,4 @@
+require 'thread'
 
 # Provides cheap advice mechanism for Ruby.
 # kurt dot ruby at kurtstephens dot com
@@ -14,6 +15,8 @@ class CheapAdvice
   #   :after
   #   :around
   def initialize opts, &blk
+    @mutex = Mutex.new
+
     @advised = [ ]
 
     opts_hash = EMPTY_HASH
@@ -46,53 +49,60 @@ class CheapAdvice
     return method.map { | x | advise! cls, x, opts } if 
       method.kind_of?(Enumerable)
 
-    advice = self
+    @mutex.synchronize do
 
-    advised = Advised.new(advice, cls, method, opts)
-
-    advised.apply_advice_methods!
-
-    cls.class_eval do
-      define_method advised.new_method do | *args, &block |
-        ar = ActivationRecord.new(advised, self, args, block)
-        
-        do_result = Proc.new do
-          self.send(advised.before_method, ar)
-          begin
-            ar.result = self.send(advised.old_method, *ar.args, &ar.block)
-          rescue Exception => err
-            ar.error = err
-          ensure
-            self.send(advised.after_method, ar)
+      advice = self
+      
+      advised = Advised.new(advice, cls, method, opts)
+      
+      advised.apply_advice_methods!
+      
+      cls.class_eval do
+        define_method advised.new_method do | *args, &block |
+          ar = ActivationRecord.new(advised, self, args, block)
+          
+          do_result = Proc.new do
+            self.send(advised.before_method, ar)
+            begin
+              ar.result = self.send(advised.old_method, *ar.args, &ar.block)
+            rescue Exception => err
+              ar.error = err
+            ensure
+              self.send(advised.after_method, ar)
+            end
+            
+            ar.result
           end
-
+          
+          self.send advised.around_method, ar, do_result
+          
+          raise ar.error if ar.error
+          
           ar.result
         end
-        
-        self.send advised.around_method, ar, do_result
-        
-        raise ar.error if ar.error
-        
-        ar.result
       end
+      
+      advised.advise!
+      
+      @advised << advised
+      
+      advised
     end
-    
-    advised.advise!
-
-    @advised << advised
-
-    advised
   end
 
 
   def unadvise!
-    @advised.each { | x | x.unadvise! }
+    @mutex.synchronize do
+      @advised.each { | x | x.unadvise! }
+    end
     self
   end
 
 
   def readvise!
-    @advised.each { | x | x.advise! }
+    @mutex.synchronize do
+      @advised.each { | x | x.advise! }
+    end
     self
   end
 
@@ -108,6 +118,7 @@ class CheapAdvice
     attr_reader :before_method, :after_method, :around_method
 
     def initialize *args
+      @mutex = Mutex.new
       @advice, @cls, @method, @options = *args
 
       @options ||= { }
@@ -124,21 +135,27 @@ class CheapAdvice
 
 
     def [](k)
-      @options[k]
+      @mutex.synchronize do
+        @options[k]
+      end
     end
 
 
     def []=(k, v)
-      @options[k] = v
+      @mutex.synchronize do
+        @options[k] = v
+      end
     end
 
 
     def apply_advice_methods!
       this = self
-      @cls.instance_eval do 
-        define_method(this.before_method, &this.advice.before)
-        define_method(this.after_method,  &this.advice.after)
-        define_method(this.around_method, &this.advice.around)  
+      @mutex.synchronize do
+        @cls.instance_eval do 
+          define_method(this.before_method, &this.advice.before)
+          define_method(this.after_method,  &this.advice.after)
+          define_method(this.around_method, &this.advice.around)  
+        end
       end
       self
     end
@@ -146,21 +163,25 @@ class CheapAdvice
 
     def advise!
       this = self
-      @cls.instance_eval do
-        alias_method this.old_method, this.method if 
-          method_defined? this.method and 
-          ! method_defined? this.old_method
-
-        alias_method this.method, this.new_method
+      @mutex.synchronize do
+        @cls.instance_eval do
+          alias_method this.old_method, this.method if 
+            method_defined? this.method and 
+            ! method_defined? this.old_method
+          
+          alias_method this.method, this.new_method
+        end
       end
       self
     end
 
     def unadvise!
       this = self
-      @cls.instance_eval do
-        alias_method this.method, this.old_method if 
-          method_defined? this.old_method
+      @mutex.synchronize do
+        @cls.instance_eval do
+          alias_method this.method, this.old_method if 
+            method_defined? this.old_method
+        end
       end
       self
     end

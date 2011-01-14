@@ -45,9 +45,11 @@ class CheapAdvice
   # Apply advice to class and method.
   def advise! cls, method, opts = nil
     return cls.map { | x | advise! x, method, opts } if 
-      cls.kind_of?(Enumerable)
+      Array === cls
     return method.map { | x | advise! cls, x, opts } if 
-      method.kind_of?(Enumerable)
+      Array === method
+
+    method = method.to_sym
 
     @mutex.synchronize do
 
@@ -55,7 +57,7 @@ class CheapAdvice
       
       advised = Advised.new(advice, cls, method, opts)
       
-      advised.apply_advice_methods!
+      advised.register_advice_methods!
       
       cls.class_eval do
         define_method advised.new_method do | *args, &block |
@@ -116,6 +118,7 @@ class CheapAdvice
     attr_reader :advice_id
     attr_reader :old_method, :new_method
     attr_reader :before_method, :after_method, :around_method
+    attr_reader :enabled
 
     def initialize *args
       @mutex = Mutex.new
@@ -131,6 +134,9 @@ class CheapAdvice
       @before_method = "__advice_before_#{@@advice_id}_#{@method}"
       @after_method  = "__advice_after_#{@@advice_id}_#{@method}"
       @around_method = "__advice_around_#{@@advice_id}_#{@method}"
+
+      @enabled = 
+        @advice_methods_applied = false
     end
 
 
@@ -148,22 +154,28 @@ class CheapAdvice
     end
 
 
-    def apply_advice_methods!
-      this = self
+    def register_advice_methods!
       @mutex.synchronize do
+        return self if @advice_methods_registered
+
+        this = self
         @cls.instance_eval do 
           define_method(this.before_method, &this.advice.before)
           define_method(this.after_method,  &this.advice.after)
           define_method(this.around_method, &this.advice.around)  
         end
+
+        @advice_methods_registered = true
       end
       self
     end
 
 
     def advise!
-      this = self
       @mutex.synchronize do
+        return self if @enabled
+
+        this = self
         @cls.instance_eval do
           alias_method this.old_method, this.method if 
             method_defined? this.method and 
@@ -171,18 +183,25 @@ class CheapAdvice
           
           alias_method this.method, this.new_method
         end
+
+        @enabled = true
       end
       self
     end
 
     def unadvise!
-      this = self
       @mutex.synchronize do
+        return self if ! @enabled
+
+        this = self
         @cls.instance_eval do
           alias_method this.method, this.old_method if 
             method_defined? this.old_method
         end
+
+        @enabled = false
       end
+
       self
     end
   end

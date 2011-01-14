@@ -90,6 +90,7 @@ describe "CheapAdvice" do
     basic_advice = CheapAdvice.new(:before) do | ar |
       ars << ar
     end
+    basic_advice.advised.size.should == 0
 
     @f = CheapAdvice::Test::Foo.new
 
@@ -102,8 +103,25 @@ describe "CheapAdvice" do
     result.should == 19
     ars.size.should == 0
 
-    basic_advice.advise! CheapAdvice::Test::Foo, :do_it
+    basic_advice.advise! CheapAdvice::Test::Foo, 'do_it'
+    basic_advice.advised.size.should == 1
+    advised = basic_advice.advised.first
+    advised.cls.should == CheapAdvice::Test::Foo
+    advised.method.should == :do_it
+    advised.enabled.should == true
     
+    arg = nil
+    f.do_it(10) do | _arg |
+      _arg.should == 17
+      arg = _arg
+    end
+    arg.should == 17
+    result.should == 19
+    ars.size.should == 1
+
+    advised.unadvise!
+    advised.enabled.should == false
+
     arg = nil
     f.do_it(10) do | _arg |
       _arg.should == 17

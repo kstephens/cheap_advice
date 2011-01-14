@@ -53,13 +53,13 @@ class CheapAdvice
     advised.apply_advice_methods!
 
     cls.class_eval do
-      define_method advised.new_method do | *args |
-        ar = ActivationRecord.new(advised, self, args)
+      define_method advised.new_method do | *args, &block |
+        ar = ActivationRecord.new(advised, self, args, block)
         
         do_result = Proc.new do
           self.send(advised.before_method, ar)
           begin
-            ar.result = self.send(advised.old_method, *ar.args)
+            ar.result = self.send(advised.old_method, *ar.args, &ar.block)
           rescue Exception => err
             ar.error = err
           ensure
@@ -87,11 +87,13 @@ class CheapAdvice
 
   def unadvise!
     @advised.each { | x | x.unadvise! }
+    self
   end
 
 
   def readvise!
     @advised.each { | x | x.advise! }
+    self
   end
 
 
@@ -138,6 +140,7 @@ class CheapAdvice
         define_method(this.after_method,  &this.advice.after)
         define_method(this.around_method, &this.advice.around)  
       end
+      self
     end
 
 
@@ -150,6 +153,7 @@ class CheapAdvice
 
         alias_method this.method, this.new_method
       end
+      self
     end
 
     def unadvise!
@@ -158,17 +162,18 @@ class CheapAdvice
         alias_method this.method, this.old_method if 
           method_defined? this.old_method
       end
+      self
     end
   end
 
 
   # Represents the activation record of a method invocation.
   class ActivationRecord
-    attr_reader :advised, :rcvr, :args
+    attr_reader :advised, :rcvr, :args, :block
     attr_accessor :result, :error, :body
     
     def initialize *args
-      @advised, @rcvr, @args = *args
+      @advised, @rcvr, @args, @block = *args
     end
 
     def advice

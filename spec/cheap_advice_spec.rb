@@ -12,7 +12,7 @@ class CheapAdvice
       end
 
       def do_it(arg)
-        yield arg + 7
+        yield(arg + 7) + 2
       end
     end
     
@@ -83,6 +83,35 @@ describe "CheapAdvice" do
     b.bar.should == 101
     b.baz(10).should == 17
     b._baz.should == 17
+  end
+
+  it 'handles methods with blocks.' do
+    ars = [ ]
+    basic_advice = CheapAdvice.new(:before) do | ar |
+      ars << ar
+    end
+
+    @f = CheapAdvice::Test::Foo.new
+
+    arg = nil
+    result = f.do_it(10) do | _arg |
+      _arg.should == 17
+      arg = _arg
+    end
+    arg.should == 17
+    result.should == 19
+    ars.size.should == 0
+
+    basic_advice.advise! CheapAdvice::Test::Foo, :do_it
+    
+    arg = nil
+    f.do_it(10) do | _arg |
+      _arg.should == 17
+      arg = _arg
+    end
+    arg.should == 17
+    result.should == 19
+    ars.size.should == 1
   end
 
 end

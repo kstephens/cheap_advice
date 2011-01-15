@@ -55,7 +55,7 @@ class CheapAdvice
     @mutex.synchronize do
       advised = advised_for cls, method, opts
       
-      advised.advise! # Should this really be automatically enabled??
+      advised.enable! # Should this really be automatically enabled??
       
       advised
     end
@@ -104,20 +104,22 @@ class CheapAdvice
   end
 
 
-  def unadvise!
+  def disable!
     @mutex.synchronize do
-      @advised.each { | x | x.unadvise! }
+      @advised.each { | x | x.disable! }
     end
     self
   end
+  alias :unadvise! :disable!
 
 
-  def readvise!
+  def enable!
     @mutex.synchronize do
-      @advised.each { | x | x.advise! }
+      @advised.each { | x | x.enable! }
     end
     self
   end
+  alias :readvise! :enable!
 
 
   # Represents the application of advice to a class and method.
@@ -191,7 +193,7 @@ class CheapAdvice
     end
 
 
-    def advise!
+    def enable!
       @mutex.synchronize do
         return self if @enabled
 
@@ -208,8 +210,9 @@ class CheapAdvice
       end
       self
     end
+    alias :advise! :enable!
 
-    def unadvise!
+    def disable!
       @mutex.synchronize do
         return self if ! @enabled
 
@@ -224,6 +227,8 @@ class CheapAdvice
 
       self
     end
+    alias :unadvise! :disable!
+
   end
 
 

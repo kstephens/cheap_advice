@@ -125,7 +125,7 @@ describe "CheapAdvice" do
     result.should == 19
   end
 
-  it 'handles applying the same advice twice.' do
+  it 'handles applying the same advice only once.' do
     null_advice = CheapAdvice.new(:before) do | ar |
     end
     null_advice.advised.size.should == 0

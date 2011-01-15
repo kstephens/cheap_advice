@@ -18,6 +18,7 @@ class CheapAdvice
     @mutex = Mutex.new
 
     @advised = [ ]
+    @advised_for = { }
 
     opts_hash = EMPTY_HASH
     opts_key = nil
@@ -52,44 +53,54 @@ class CheapAdvice
     method = method.to_sym
 
     @mutex.synchronize do
-
-      advice = self
+      advised = advised_for cls, method, opts
       
-      advised = Advised.new(advice, cls, method, opts)
-      
-      advised.register_advice_methods!
-      
-      cls.class_eval do
-        define_method advised.new_method do | *args, &block |
-          ar = ActivationRecord.new(advised, self, args, block)
-          
-          do_result = Proc.new do
-            self.send(advised.before_method, ar)
-            begin
-              ar.result = self.send(advised.old_method, *ar.args, &ar.block)
-            rescue Exception => err
-              ar.error = err
-            ensure
-              self.send(advised.after_method, ar)
-            end
-            
-            ar.result
-          end
-          
-          self.send advised.around_method, ar, do_result
-          
-          raise ar.error if ar.error
-          
-          ar.result
-        end
-      end
-      
-      advised.advise!
-      
-      @advised << advised
+      advised.advise! # Should this really be automatically enabled??
       
       advised
     end
+  end
+
+  def advised_for cls, method, opts
+    @advised_for[[ cls, method ]] ||=
+      construct_advised_for cls, method, opts
+  end
+
+  def construct_advised_for cls, method, opts
+    advice = self
+    
+    advised = Advised.new(advice, cls, method, opts)
+    
+    advised.register_advice_methods!
+    
+    cls.class_eval do
+      define_method advised.new_method do | *args, &block |
+        ar = ActivationRecord.new(advised, self, args, block)
+        
+        do_result = Proc.new do
+          self.send(advised.before_method, ar)
+          begin
+            ar.result = self.send(advised.old_method, *ar.args, &ar.block)
+          rescue Exception => err
+            ar.error = err
+          ensure
+            self.send(advised.after_method, ar)
+          end
+          
+          ar.result
+        end
+        
+        self.send advised.around_method, ar, do_result
+        
+        raise ar.error if ar.error
+        
+        ar.result
+      end
+    end
+
+    @advised << advised
+      
+    advised
   end
 
 
@@ -137,6 +148,15 @@ class CheapAdvice
 
       @enabled = 
         @advice_methods_applied = false
+    end
+
+    def == x
+      return false unless self.class === x
+      @advice == x.advice && @cls == x.cls && @method == x.method
+    end
+
+    def hash
+      @advice.hash ^ @cls.hash ^ @method.hash
     end
 
 

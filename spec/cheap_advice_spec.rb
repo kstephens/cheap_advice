@@ -125,6 +125,24 @@ describe "CheapAdvice" do
     result.should == 19
   end
 
+  it 'handles applying the same advice twice.' do
+    null_advice = CheapAdvice.new(:before) do | ar |
+    end
+    null_advice.advised.size.should == 0
+
+    @f = CheapAdvice::Test::Foo.new
+
+    advised = null_advice.advise! CheapAdvice::Test::Foo, :do_it
+    null_advice.advised.size.should == 1
+
+    advised_again = null_advice.advise! CheapAdvice::Test::Foo, :do_it
+    advised_again.object_id.should == advised.object_id
+
+    null_advice.advised.size.should == 1
+
+    advised.unadvise!
+  end
+
 end
 
 

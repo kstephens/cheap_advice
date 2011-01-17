@@ -6,7 +6,14 @@ class CheapAdvice
     class Foo
       attr_accessor :foo
       attr_reader :_baz
+      (class << self; self; end).instance_eval do 
+        attr_accessor :_baz
+      end
       
+      def self.baz(arg)
+        self._baz = 3 + arg
+      end
+
       def baz(arg)
         @_baz = 5 + arg
       end
@@ -130,8 +137,6 @@ describe "CheapAdvice" do
     end
     null_advice.advised.size.should == 0
 
-    @f = CheapAdvice::Test::Foo.new
-
     advised = null_advice.advise! CheapAdvice::Test::Foo, :do_it
     null_advice.advised.size.should == 1
 
@@ -140,8 +145,48 @@ describe "CheapAdvice" do
 
     null_advice.advised.size.should == 1
 
+    advised = null_advice.advise! CheapAdvice::Test::Foo, :baz, :class
+    null_advice.advised.size.should == 2
+
+    advised_again = null_advice.advise! CheapAdvice::Test::Foo, :baz, :class
+    advised_again.object_id.should == advised.object_id
+
+    null_advice.advised.size.should == 2
+
     advised.unadvise!
   end
+
+  it 'handles class method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+
+    @f = CheapAdvice::Test::Foo.new
+
+    advice_called.should == 0
+    CheapAdvice::Test::Foo._baz.should == nil
+    
+    advised = null_advice.advise! CheapAdvice::Test::Foo, :baz, :class
+    null_advice.advised.size.should == 1
+
+    CheapAdvice::Test::Foo.baz(5).should == 8
+    CheapAdvice::Test::Foo._baz.should == 8
+    @f.baz(5).should == 10
+    @f._baz.should == 10
+    advice_called.should == 1
+
+    advised.unadvise!
+
+    CheapAdvice::Test::Foo.baz(7).should == 10
+    CheapAdvice::Test::Foo._baz.should == 10
+    @f.baz(5).should == 10
+    @f._baz.should == 10
+    advice_called.should == 1
+  end
+
 
 end
 

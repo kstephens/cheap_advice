@@ -64,16 +64,21 @@ class CheapAdvice
 
 
   # Apply advice to class and method.
-  def advise! cls, method, opts = nil
-    return cls.map { | x | advise! x, method, opts } if 
+  # 
+  def advise! cls, method, *opts
+    return cls.map { | x | advise! x, method, *opts } if 
       Array === cls
-    return method.map { | x | advise! cls, x, opts } if 
+    return method.map { | x | advise! cls, x, *opts } if 
       Array === method
+
+    opts_hash = Hash === opts[-1] ? opts.pop : nil
+    kind = opts.shift
+    kind ||= :instance
 
     method = method.to_sym
 
     @mutex.synchronize do
-      advised = advised_for cls, method, opts
+      advised = advised_for cls, method, kind, opts_hash
       
       advised.enable! # Should this really be automatically enabled??
       
@@ -81,19 +86,19 @@ class CheapAdvice
     end
   end
 
-  def advised_for cls, method, opts
-    @advised_for[[ cls, method ]] ||=
-      construct_advised_for cls, method, opts
+  def advised_for cls, method, kind, opts
+    @advised_for[[ cls, method, kind ]] ||=
+      construct_advised_for cls, method, kind, opts
   end
 
-  def construct_advised_for cls, method, opts
+  def construct_advised_for cls, method, kind, opts
     advice = self
     
-    advised = Advised.new(advice, cls, method, opts)
+    advised = Advised.new(advice, cls, method, kind, opts)
     
     advised.register_advice_methods!
     
-    cls.class_eval do
+    advised.cls_target.instance_eval do
       define_method advised.new_method do | *args, &block |
         ar = ActivationRecord.new(advised, self, args, block)
         
@@ -148,7 +153,7 @@ class CheapAdvice
 
     @@advice_id ||= 0
 
-    attr_reader :advice, :cls, :method, :options
+    attr_reader :advice, :cls, :method, :kind, :options
     attr_reader :advice_id
     attr_reader :old_method, :new_method
     attr_reader :before_method, :after_method, :around_method
@@ -156,7 +161,13 @@ class CheapAdvice
 
     def initialize *args
       @mutex = Mutex.new
-      @advice, @cls, @method, @options = *args
+      @advice, @cls, @method, @kind, @options = *args
+
+      case @kind
+      when :instance, :class, :method
+      else
+        raise ArgumentError, "invalid kind #{kind.inspect}"
+      end
 
       @options ||= { }
 
@@ -175,20 +186,31 @@ class CheapAdvice
 
     def == x
       return false unless self.class === x
-      @advice == x.advice && @cls == x.cls && @method == x.method
+      @advice == x.advice && @cls == x.cls && @method == x.method && @kind == x.kind
     end
 
     def hash
-      @advice.hash ^ @cls.hash ^ @method.hash
+      @advice.hash ^ @cls.hash ^ @method.hash ^ @kind.hash
     end
 
+
+    def cls_target
+      case @kind
+      when :instance
+        @cls
+      when :class, :module
+        (class << @cls; self; end)
+      else
+        raise ArgumentError, "invalid kind #{kind.inspect}"
+      end
+    end
 
     def register_advice_methods!
       @mutex.synchronize do
         return self if @advice_methods_registered
 
         this = self
-        @cls.instance_eval do 
+        cls_target.instance_eval do 
           define_method(this.before_method, &this.advice.before)
           define_method(this.after_method,  &this.advice.after)
           define_method(this.around_method, &this.advice.around)  
@@ -205,7 +227,7 @@ class CheapAdvice
         return self if @enabled
 
         this = self
-        @cls.instance_eval do
+        cls_target.instance_eval do
           alias_method this.old_method, this.method if 
             method_defined? this.method and 
             ! method_defined? this.old_method
@@ -224,7 +246,7 @@ class CheapAdvice
         return self if ! @enabled
 
         this = self
-        @cls.instance_eval do
+        cls_target.instance_eval do
           alias_method this.method, this.old_method if 
             method_defined? this.old_method
         end

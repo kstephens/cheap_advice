@@ -20,9 +20,9 @@ Add/remove advice around, before or after methods in Ruby.
   b = MyOtherClass.new
 
   trace_advice = CheapAdvice.new(:around) do | ar, body |
-    ar.advice[:log].puts "#{Time.now.iso8601(4)} #{ar.rcvr.class} #{ar.method} #{ar.rcvr.object_id}"
+    ar.advice[:log].puts "#{Time.now.iso8601(6)} #{ar.rcvr.class} #{ar.method} #{ar.rcvr.object_id}"
     body.call
-    ar.advice[:log].puts "#{Time.now.iso8601(4)} #{ar.rcvr.class} #{ar.method} #{ar.rcvr.object_id} => #{ar.result.inspect}"    
+    ar.advice[:log].puts "#{Time.now.iso8601(6)} #{ar.rcvr.class} #{ar.method} #{ar.rcvr.object_id} => #{ar.result.inspect}"    
   end
   trace_advice[:log] = File.open("trace.log", "a+")
   trace_advice.advise!(MyClass, :foo)

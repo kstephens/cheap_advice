@@ -46,7 +46,7 @@ trace.log will contain something like:
 
 == Issues
 
-* Does not support class methods, yet.
+* Rails-type autoloading can confuse CheapAdvice.
   
 == Contributing to cheap_advice
  

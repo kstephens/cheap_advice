@@ -4,7 +4,28 @@ require 'thread'
 # kurt dot ruby at kurtstephens dot com
 #
 class CheapAdvice
-  attr_accessor :before, :after, :around, :advised
+  module Options
+    def initialize
+      @mutex = Mutex.new
+      @options = { }
+    end
+
+    def [](k)
+      @mutex.synchronize do
+        @options[k]
+      end
+    end
+
+
+    def []=(k, v)
+      @mutex.synchronize do
+        @options[k] = v
+      end
+    end
+  end
+  include Options
+
+  attr_accessor :before, :after, :around, :advised, :options
 
   NULL_PROC = lambda { | ar | }
   NULL_AROUND_PROC = lambda { | ar, result | result.call }
@@ -15,7 +36,7 @@ class CheapAdvice
   #   :after
   #   :around
   def initialize opts, &blk
-    @mutex = Mutex.new
+    super()
 
     @advised = [ ]
     @advised_for = { }
@@ -24,13 +45,12 @@ class CheapAdvice
     opts_key = nil
     
     case opts
-      # advice :before => lambda ...
-    when Hash 
+    when Hash # advice :before => lambda ...
       opts_hash = opts
-      # advice :method, :before do ... end
-    when Symbol 
+    when Symbol # advice :method, :before do ... end
       opts_key = opts
     end
+    @options = opts_hash.dup
 
     @before = (opts_key == :before ? blk : opts_hash[:before]) || 
       NULL_PROC
@@ -124,6 +144,7 @@ class CheapAdvice
 
   # Represents the application of advice to a class and method.
   class Advised
+    include Options
 
     @@advice_id ||= 0
 
@@ -159,20 +180,6 @@ class CheapAdvice
 
     def hash
       @advice.hash ^ @cls.hash ^ @method.hash
-    end
-
-
-    def [](k)
-      @mutex.synchronize do
-        @options[k]
-      end
-    end
-
-
-    def []=(k, v)
-      @mutex.synchronize do
-        @options[k] = v
-      end
     end
 
 

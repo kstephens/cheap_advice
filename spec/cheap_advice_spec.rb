@@ -3,7 +3,15 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 class CheapAdvice
   module Test
 
+    module M
+      attr_accessor :_m
+      def m(arg)
+        @_m = 1 + arg
+      end
+    end
+
     class Foo
+      include M
       attr_accessor :foo
       attr_reader :_baz
       (class << self; self; end).instance_eval do 
@@ -25,6 +33,7 @@ class CheapAdvice
     
     
     class Bar
+      include M
       attr_accessor :bar
       attr_reader :_baz
       
@@ -156,6 +165,55 @@ describe "CheapAdvice" do
     advised.unadvise!
   end
 
+  it 'handles String for class and method names.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+
+    @f = CheapAdvice::Test::Foo.new
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!('CheapAdvice::Test::Foo', 'baz')
+    null_advice.advised.size.should == 1
+
+    @f.baz(5).should == 10
+    @f._baz.should == 10
+    advice_called.should == 1
+
+    advised.unadvise!
+  end
+
+  it 'handles Module method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+
+    @f = CheapAdvice::Test::Foo.new
+    @b = CheapAdvice::Test::Bar.new
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!('CheapAdvice::Test::M', 'm')
+    null_advice.advised.size.should == 1
+
+    @f.m(5).should == 6
+    @f._m.should == 6
+
+    @b.m(5).should == 6
+    @b._m.should == 6
+
+    advice_called.should == 2
+
+    advised.unadvise!
+  end
+
   it 'handles class method advice.' do
     advice_called = 0
     null_advice = CheapAdvice.new(:before) do | ar |
@@ -169,7 +227,7 @@ describe "CheapAdvice" do
     advice_called.should == 0
     CheapAdvice::Test::Foo._baz.should == nil
     
-    advised = null_advice.advise! CheapAdvice::Test::Foo, :baz, :class
+    advised = null_advice.advise!(CheapAdvice::Test::Foo, :baz, :class)
     null_advice.advised.size.should == 1
 
     CheapAdvice::Test::Foo.baz(5).should == 8

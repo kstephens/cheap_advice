@@ -63,12 +63,12 @@ class CheapAdvice
   end
 
 
-  # Apply advice to class and method.
+  # Apply advice a method.
   # 
-  def advise! cls, method, *opts
-    return cls.map { | x | advise! x, method, *opts } if 
-      Array === cls
-    return method.map { | x | advise! cls, x, *opts } if 
+  def advise! mod, method, *opts
+    return mod.map { | x | advise! x, method, *opts } if 
+      Array === mod
+    return method.map { | x | advise! mod, x, *opts } if 
       Array === method
 
     opts_hash = Hash === opts[-1] ? opts.pop : nil
@@ -78,7 +78,7 @@ class CheapAdvice
     method = method.to_sym
 
     @mutex.synchronize do
-      advised = advised_for cls, method, kind, opts_hash
+      advised = advised_for mod, method, kind, opts_hash
       
       advised.enable! # Should this really be automatically enabled??
       
@@ -86,19 +86,19 @@ class CheapAdvice
     end
   end
 
-  def advised_for cls, method, kind, opts
-    @advised_for[[ cls, method, kind ]] ||=
-      construct_advised_for cls, method, kind, opts
+  def advised_for mod, method, kind, opts
+    @advised_for[[ mod, method, kind ]] ||=
+      construct_advised_for mod, method, kind, opts
   end
 
-  def construct_advised_for cls, method, kind, opts
+  def construct_advised_for mod, method, kind, opts
     advice = self
     
-    advised = Advised.new(advice, cls, method, kind, opts)
+    advised = Advised.new(advice, mod, method, kind, opts)
     
     advised.register_advice_methods!
     
-    advised.cls_target.instance_eval do
+    advised.mod_target.instance_eval do
       define_method advised.new_method do | *args, &block |
         ar = ActivationRecord.new(advised, self, args, block)
         
@@ -153,7 +153,8 @@ class CheapAdvice
 
     @@advice_id ||= 0
 
-    attr_reader :advice, :cls, :method, :kind, :options
+    attr_reader :advice, :mod, :method, :kind, :options
+    alias :cls :mod # Deprecated.
     attr_reader :advice_id
     attr_reader :old_method, :new_method
     attr_reader :before_method, :after_method, :around_method
@@ -161,7 +162,7 @@ class CheapAdvice
 
     def initialize *args
       @mutex = Mutex.new
-      @advice, @cls, @method, @kind, @options = *args
+      @advice, @mod, @method, @kind, @options = *args
 
       case @kind
       when :instance, :class, :method
@@ -186,22 +187,34 @@ class CheapAdvice
 
     def == x
       return false unless self.class === x
-      @advice == x.advice && @cls == x.cls && @method == x.method && @kind == x.kind
+      @advice == x.advice && @mod == x.mod && @method == x.method && @kind == x.kind
     end
 
     def hash
-      @advice.hash ^ @cls.hash ^ @method.hash ^ @kind.hash
+      @advice.hash ^ @mod.hash ^ @method.hash ^ @kind.hash
     end
 
-
-    def cls_target
+    def mod_target
       case @kind
       when :instance
-        @cls
+        mod_resolve
       when :class, :module
-        (class << @cls; self; end)
+        (class << mod_resolve; self; end)
       else
         raise ArgumentError, "invalid kind #{kind.inspect}"
+      end
+    end
+
+    def mod_resolve
+      case @mod
+      when Module
+        @mod
+      when String, Symbol
+        @mod.to_s.split('::').
+          reject { | name | name.empty?}.
+          inject(Object) { | namespace, name | namespace.const_get(name) }
+      else
+        raise TypeError, "mod_resolve: expected Module, String, Symbol, given #{@mod.class}"
       end
     end
 
@@ -210,7 +223,7 @@ class CheapAdvice
         return self if @advice_methods_registered
 
         this = self
-        cls_target.instance_eval do 
+        mod_target.instance_eval do 
           define_method(this.before_method, &this.advice.before)
           define_method(this.after_method,  &this.advice.after)
           define_method(this.around_method, &this.advice.around)  
@@ -227,7 +240,7 @@ class CheapAdvice
         return self if @enabled
 
         this = self
-        cls_target.instance_eval do
+        mod_target.instance_eval do
           alias_method this.old_method, this.method if 
             method_defined? this.method and 
             ! method_defined? this.old_method
@@ -246,7 +259,7 @@ class CheapAdvice
         return self if ! @enabled
 
         this = self
-        cls_target.instance_eval do
+        mod_target.instance_eval do
           alias_method this.method, this.old_method if 
             method_defined? this.old_method
         end

@@ -165,7 +165,7 @@ class CheapAdvice
       @advice, @mod, @method, @kind, @options = *args
 
       case @kind
-      when :instance, :class, :method
+      when :instance, :class, :module
       else
         raise ArgumentError, "invalid kind #{kind.inspect}"
       end
@@ -201,7 +201,7 @@ class CheapAdvice
       when :class, :module
         (class << mod_resolve; self; end)
       else
-        raise ArgumentError, "invalid kind #{kind.inspect}"
+        raise ArgumentError, "mod_target: invalid kind #{kind.inspect}"
       end
     end
 

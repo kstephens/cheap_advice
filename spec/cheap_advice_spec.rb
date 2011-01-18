@@ -8,6 +8,9 @@ class CheapAdvice
       def m(arg)
         @_m = 1 + arg
       end
+      def self.mm(arg)
+        3 + arg
+      end
     end
 
     class Foo
@@ -187,7 +190,7 @@ describe "CheapAdvice" do
     advised.unadvise!
   end
 
-  it 'handles Module method advice.' do
+  it 'handles Module instance method advice.' do
     advice_called = 0
     null_advice = CheapAdvice.new(:before) do | ar |
       advice_called += 1
@@ -214,7 +217,26 @@ describe "CheapAdvice" do
     advised.unadvise!
   end
 
-  it 'handles class method advice.' do
+  it 'handles Module singleton method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!(CheapAdvice::Test::M, :mm, :module)
+    null_advice.advised.size.should == 1
+
+    CheapAdvice::Test::M.mm(5).should == 8
+
+    advice_called.should == 1
+
+    advised.unadvise!
+  end
+
+  it 'handles Class method advice.' do
     advice_called = 0
     null_advice = CheapAdvice.new(:before) do | ar |
       advice_called += 1

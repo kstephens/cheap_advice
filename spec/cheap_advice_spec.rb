@@ -117,7 +117,7 @@ describe "CheapAdvice" do
 
     basic_advice.advised.size.should == 1
     advised = basic_advice.advised.first
-    advised.cls.should == CheapAdvice::Test::Foo
+    advised.mod.should == CheapAdvice::Test::Foo
     advised.method.should == :do_it
     advised.enabled.should == true
     

@@ -25,6 +25,7 @@ class CheapAdvice
 
         if ad[:log_after] != false
           a.log(log_dst) do
+            msg ||= "#{ar.rcvr.class} #{ar.method}"
             msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
             msg = "#{msg} => #{ar.result.inspect}" if ad[:log_result] != false
             msg

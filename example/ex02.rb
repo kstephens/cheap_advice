@@ -14,11 +14,11 @@ require 'ruby-debug'
 # Target
 
 class MyClass
-  def foo
-    42
+  def foo(arg)
+    42 + arg
   end
-  def bar
-    24
+  def bar(arg)
+    24 + arg
   end
 end
 
@@ -71,8 +71,8 @@ Benchmark.bm(40) do | bm |
     
     bm.report("Target activity") do
       a = MyClass.new
-      a.foo
-      a.bar
+      a.foo(123)
+      a.bar(456)
     end
   end
 end

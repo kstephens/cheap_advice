@@ -312,6 +312,10 @@ class CheapAdvice
       @advised.advice
     end
 
+    def mod
+      @advised.mod
+    end
+
     def method
       @advised.method
     end

@@ -6,11 +6,11 @@
       :trace:
         :logger: :default
 
-  'MyClass':
+  MyClass:
     :advice:  trace
 
-  'MyClass#foo':
+  MyClass#foo:
     :enabled: true
 
-  'MyClass#bar':
+  MyClass#bar:
     :enabled: false

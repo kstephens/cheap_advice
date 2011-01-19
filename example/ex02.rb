@@ -69,9 +69,11 @@ Benchmark.bm(40) do | bm |
     ##################################################
     # Target activity
     
-    a = MyClass.new
-    a.foo
-    a.bar
+    bm.report("Target activity") do
+      a = MyClass.new
+      a.foo
+      a.bar
+    end
   end
 end
 

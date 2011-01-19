@@ -14,16 +14,20 @@ class CheapAdvice
 
         msg = nil
 
-        a.log(log_dst) do 
-          msg = "#{ar.rcvr.class} #{ar.method}"
-          "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg}"
+        if ad[:log_before] != false
+          a.log(log_dst) do 
+            msg = "#{ar.rcvr.class} #{ar.method}"
+            "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} {"
+          end
         end
 
         body.call
 
-        if ad[:log_result] != false
+        if ad[:log_after] != false
           a.log(log_dst) do
-            "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} => #{ar.result.inspect}"
+            msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
+            msg = "#{msg} => #{ar.result.inspect}" if ad[:log_result] != false
+            msg
           end
         end
       end

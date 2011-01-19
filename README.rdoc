@@ -44,6 +44,11 @@ trace.log will contain something like:
   2011-01-17T16:33:27.882319-06:00 MyOtherClass bar 69872883178200
   2011-01-17T16:33:27.882367-06:00 MyOtherClass bar 69872883178200 => 43
 
+== Other Features
+
+CheapAdvice::Configuration provides a generic mechanism to configure multiple advices on different methods.
+CheapAdvice::Trace provides an example advice factory for generic method tracing/logging.  See examples/ex02.rb.
+
 == Issues
 
 * Rails-type autoloading can confuse CheapAdvice.

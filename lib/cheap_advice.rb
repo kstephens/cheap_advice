@@ -111,19 +111,19 @@ class CheapAdvice
         ar = ActivationRecord.new(advised, self, args, block)
         
         do_result = Proc.new do
-          self.send(advised.before_method, ar)
+          self.__send__(advised.before_method, ar)
           begin
-            ar.result = self.send(advised.old_method, *ar.args, &ar.block)
+            ar.result = self.__send__(advised.old_method, *ar.args, &ar.block)
           rescue Exception => err
             ar.error = err
           ensure
-            self.send(advised.after_method, ar)
+            self.__send__(advised.after_method, ar)
           end
           
           ar.result
         end
         
-        self.send advised.around_method, ar, do_result
+        self.__send__(advised.around_method, ar, do_result)
         
         raise ar.error if ar.error
         

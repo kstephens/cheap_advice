@@ -46,8 +46,8 @@ trace.log will contain something like:
 
 == Other Features
 
-CheapAdvice::Configuration provides a generic mechanism to configure multiple advices on different methods.
-CheapAdvice::Trace provides an example advice factory for generic method tracing/logging.  See examples/ex02.rb.
+* CheapAdvice::Configuration provides a generic mechanism to configure multiple advices on different methods.
+* CheapAdvice::Trace provides an example advice factory for generic method tracing/logging.  See examples/ex02.rb.
 
 == Issues
 

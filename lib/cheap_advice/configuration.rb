@@ -77,9 +77,9 @@ class CheapAdvice
           next unless enabled
           advice_name = advice_name.to_sym
           if advice = @advice[advice_name]
-            options = (t[:options][nil] || EMPTY_Hash).dup
+            options = t[:options][nil]
             options = merge!(options, t[:options][advice_name])
-            puts "#{t.inspect} options => #{options.inspect}"
+            # puts "#{t.inspect} options => #{options.inspect}"
             (t[:advised] ||= { })[advice_name] = advice.advise!(t[:mod], t[:method], t[:kind], options)
           else
             raise Error, "no advice #{advice_name.inspect} for #{t.inspect}"

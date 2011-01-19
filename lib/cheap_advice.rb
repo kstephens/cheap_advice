@@ -16,16 +16,16 @@ class CheapAdvice
     end
 
     def [](k)
-      @mutex.synchronize do
+      # @mutex.synchronize do
         @options[k]
-      end
+      # end
     end
 
 
     def []=(k, v)
-      @mutex.synchronize do
+      # @mutex.synchronize do
         @options[k] = v
-      end
+      # end
     end
   end
   include Options

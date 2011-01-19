@@ -17,7 +17,7 @@ class CheapAdvice
         if ad[:log_before] != false
           a.log(log_dst) do 
             msg = "#{ar.rcvr.class} #{ar.method}"
-            msg = "#{msg}(#{ar.args.inspect.gsub(/\A\[|\]\Z/, '')})" if ad[:log_args] != false
+            msg = "#{msg} ( #{ar.args.inspect.gsub(/\A\[|\]\Z/, '')} )" if ad[:log_args] != false
             "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} {"
           end
         end
@@ -28,7 +28,7 @@ class CheapAdvice
           a.log(log_dst) do
             unless msg
               msg = "#{ar.rcvr.class} #{ar.method}"
-              msg = "#{msg}(#{ar.args.inspect.gsub(/\A\[|\]\Z/, '')})" if ad[:log_args] != false
+              msg = "#{msg} ( #{ar.args.inspect.gsub(/\A\[|\]\Z/, '')} )" if ad[:log_args] != false
             end
             msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
             msg = "#{msg} => #{ar.result.inspect}" if ad[:log_result] != false

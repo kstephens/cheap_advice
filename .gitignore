@@ -1,3 +1,6 @@
+# LOCAL
+example/*.log
+
 # rcov generated
 coverage
 

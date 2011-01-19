@@ -1,0 +1,18 @@
+
+:advice:
+  ~:
+    :enabled: true
+    :options:
+      :trace:
+        :logger: :default
+
+  'MyClass':
+    :advice:  trace
+
+  'MyClass#foo': ~
+  'MyClass#bar':
+    :options:
+      :trace:
+        :logger: :alternate
+
+

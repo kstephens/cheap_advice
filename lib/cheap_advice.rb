@@ -4,6 +4,11 @@ require 'thread'
 # kurt dot ruby at kurtstephens dot com
 #
 class CheapAdvice
+  EMPTY_Hash = { }.freeze
+  EMPTY_Array = [ ].freeze
+
+  class Error < ::Exception; end
+
   module Options
     def initialize
       @mutex = Mutex.new
@@ -27,30 +32,25 @@ class CheapAdvice
 
   attr_accessor :before, :after, :around, :advised, :options
 
+  # Module to extend new Advised objects with.
+  attr_accessor :advised_extend
+
   NULL_PROC = lambda { | ar | }
   NULL_AROUND_PROC = lambda { | ar, result | result.call }
-  EMPTY_HASH = { }.freeze
 
   # options:
   #   :before
   #   :after
   #   :around
-  def initialize opts, &blk
+  def initialize *opts, &blk
     super()
 
     @advised = [ ]
     @advised_for = { }
 
-    opts_hash = EMPTY_HASH
-    opts_key = nil
-    
-    case opts
-    when Hash # advice :before => lambda ...
-      opts_hash = opts
-    when Symbol # advice :method, :before do ... end
-      opts_key = opts
-    end
-    @options = opts_hash.dup
+    opts_hash = Hash === opts[-1] ? opts.pop : { }
+    opts_key = opts.shift
+    @options = opts_hash
 
     @before = (opts_key == :before ? blk : opts_hash[:before]) || 
       NULL_PROC
@@ -71,7 +71,7 @@ class CheapAdvice
     return method.map { | x | advise! mod, x, *opts } if 
       Array === method
 
-    opts_hash = Hash === opts[-1] ? opts.pop : nil
+    opts_hash = Hash === opts[-1] ? opts.pop : { }
     kind = opts.shift
     kind ||= :instance
 
@@ -86,15 +86,23 @@ class CheapAdvice
     end
   end
 
-  def advised_for mod, method, kind, opts
-    @advised_for[[ mod, method, kind ]] ||=
-      construct_advised_for mod, method, kind, opts
+  def advised_select mod, method, kind
+    @advised.select do | ad |
+      (mod ? mod == ad.mod : true) &&
+        (method ? method == ad.method : true) &&
+        (kind ? kind == ad.kind : true)
+    end
   end
 
-  def construct_advised_for mod, method, kind, opts
+  def advised_for mod, method, kind, opts
+    (@advised_for[[ mod, method, kind ]] ||=
+      construct_advised_for(mod, method, kind)).set_options!(opts)
+  end
+
+  def construct_advised_for mod, method, kind
     advice = self
     
-    advised = Advised.new(advice, mod, method, kind, opts)
+    advised = Advised.new(advice, mod, method, kind)
     
     advised.register_advice_methods!
     
@@ -122,6 +130,8 @@ class CheapAdvice
         ar.result
       end
     end
+
+    advised.extend(@advised_extend) if @advised_extend
 
     @advised << advised
       
@@ -153,8 +163,9 @@ class CheapAdvice
 
     @@advice_id ||= 0
 
-    attr_reader :advice, :mod, :method, :kind, :options
+    attr_reader :advice, :mod, :method, :kind
     alias :cls :mod # Deprecated.
+    attr_accessor :options
     attr_reader :advice_id
     attr_reader :old_method, :new_method
     attr_reader :before_method, :after_method, :around_method
@@ -183,6 +194,20 @@ class CheapAdvice
 
       @enabled = 
         @advice_methods_applied = false
+    end
+
+    def set_options! options
+      @options = options || { }
+      self
+    end
+
+    def fromString str
+      case str
+      when String, Symbol
+        str.to_s.
+      else
+        raise TypeError
+      end
     end
 
     def == x

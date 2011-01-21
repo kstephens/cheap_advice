@@ -10,6 +10,8 @@ class CheapAdvice
   class Error < ::Exception; end
 
   module Options
+    # Hash accesible by #[] and #[]=.
+    attr_accessor :options
     def initialize
       @mutex = Mutex.new
       @options = { }
@@ -30,13 +32,17 @@ class CheapAdvice
   end
   include Options
 
-  attr_accessor :before, :after, :around, :advised, :options
+  # Procs called before, after, and around the original method.
+  attr_accessor :before, :after, :around
 
-  # Module to extend new Advised objects with.
+  # Collection of Advised method bindings.
+  attr_accessor :advised
+
+  # Module or Array of Modules to extend new Advised objects with.
   attr_accessor :advised_extend
 
   NULL_PROC = lambda { | ar | }
-  NULL_AROUND_PROC = lambda { | ar, result | result.call }
+  NULL_AROUND_PROC = lambda { | ar, body | body.call }
 
   # options:
   #   :before
@@ -63,8 +69,29 @@ class CheapAdvice
   end
 
 
-  # Apply advice a method.
+  # Apply advice a method on a Module (or Class).
+  #
+  # The advised method is enabled immediately (this may change in a future release).
+  #
+  # Returns an Advised object that describes what method was advised.
+  #
+  # mod can be a String, a Module or an Array of either.
+  # method can be a String, a Symbol or an Array of either.
+  # if either are Arrays the result will be an Array of Advised objects.
   # 
+  # The type of method scope can be specified by:
+  # * :instance (default)
+  # * :class 
+  # * :module 
+  #
+  # Any additional Hash options are propagated to the Advised binding object, which
+  # can be accessed from the ActivationRecord passed to the Advice block(s).
+  #
+  # Examples:
+  #   advice = CheapAdvice(:around) { | ar, body | ...; body.call; ... }
+  #   advice.advise! MyClass, :instance_method, options_hash
+  #   advice.advise! MyClass, :class_method, :class
+  #
   def advise! mod, method, *opts
     return mod.map { | x | advise! x, method, *opts } if 
       Array === mod
@@ -94,44 +121,31 @@ class CheapAdvice
     end
   end
 
+  # Returns the existing Advised binding or creates a new one.
   def advised_for mod, method, kind, opts
     (@advised_for[[ mod, method, kind ]] ||=
       construct_advised_for(mod, method, kind)).set_options!(opts)
   end
 
+  # Constructs an Advised binding from this Advice.
   def construct_advised_for mod, method, kind
     advice = self
     
     advised = Advised.new(advice, mod, method, kind)
     
-    advised.register_advice_methods!
-    
-    advised.mod_target.instance_eval do
-      define_method advised.new_method do | *args, &block |
-        ar = ActivationRecord.new(advised, self, args, block)
-        
-        do_result = Proc.new do
-          self.__send__(advised.before_method, ar)
-          begin
-            ar.result = self.__send__(advised.old_method, *ar.args, &ar.block)
-          rescue Exception => err
-            ar.error = err
-          ensure
-            self.__send__(advised.after_method, ar)
-          end
-          
-          ar.result
-        end
-        
-        self.__send__(advised.around_method, ar, do_result)
-        
-        raise ar.error if ar.error
-        
-        ar.result
-      end
+    case @advised_extend
+    when nil
+    when Module
+      advised.extend(@advised_extend)
+    when Array
+      @advised_extend.each { | m | advised.extend(m) }
+    else
+      raise TypeError, "advised_extend: expected nil, Module or Array of Modules, given #{@advised_extend.class}"
     end
 
-    advised.extend(@advised_extend) if @advised_extend
+    advised.register_advice_methods!
+    
+    advised.define_new_method!
 
     @advised << advised
       
@@ -139,6 +153,7 @@ class CheapAdvice
   end
 
 
+  # Disables all currently Advised methods.
   def disable!
     @mutex.synchronize do
       @advised.each { | x | x.disable! }
@@ -148,6 +163,7 @@ class CheapAdvice
   alias :unadvise! :disable!
 
 
+  # Enables all currently Advised methods.
   def enable!
     @mutex.synchronize do
       @advised.each { | x | x.enable! }
@@ -157,18 +173,29 @@ class CheapAdvice
   alias :readvise! :enable!
 
 
-  # Represents the application of advice to a class and method.
+  # Represents the application/binding of advice to a class and method.
   class Advised
     include Options
 
-    @@advice_id ||= 0
-
-    attr_reader :advice, :mod, :method, :kind
+    @@mutex = Mutex.new
+    @@advised_id ||= 0
+    
+    # The Advice being applied to the Module and method.
+    attr_reader :advice
+    # The Module, method and kind (instance, class or module method)
+    attr_reader :mod, :method, :kind
     alias :cls :mod # Deprecated.
-    attr_accessor :options
-    attr_reader :advice_id
+
+    # The unique Advised id used to generate unique method names.
+    attr_reader :advised_id
+    
+    # The name of the old and new method being patched in.
     attr_reader :old_method, :new_method
+
+    # The name of the before, after and around methods.
     attr_reader :before_method, :after_method, :around_method
+
+    # True if the Advised methods are currently installed.
     attr_reader :enabled
 
     def initialize *args
@@ -183,14 +210,16 @@ class CheapAdvice
 
       @options ||= { }
 
-      @advice_id = @@advice_id += 1
-      
-      @old_method = "__advice_old_#{@@advice_id}_#{@method}"
-      @new_method = "__advice_new_#{@@advice_id}_#{@method}"
+      @@mutex.synchronize do
+        @advised_id = @@advised_id += 1
+      end
+
+      @old_method = "__advice_old_#{@@advised_id}_#{@method}"
+      @new_method = "__advice_new_#{@@advised_id}_#{@method}"
     
-      @before_method = "__advice_before_#{@@advice_id}_#{@method}"
-      @after_method  = "__advice_after_#{@@advice_id}_#{@method}"
-      @around_method = "__advice_around_#{@@advice_id}_#{@method}"
+      @before_method = "__advice_before_#{@@advised_id}_#{@method}"
+      @after_method  = "__advice_after_#{@@advised_id}_#{@method}"
+      @around_method = "__advice_around_#{@@advised_id}_#{@method}"
 
       @enabled = 
         @advice_methods_applied = false
@@ -201,6 +230,7 @@ class CheapAdvice
       self
     end
 
+=begin
     def fromString str
       case str
       when String, Symbol
@@ -209,16 +239,20 @@ class CheapAdvice
         raise TypeError
       end
     end
+=end
 
+    # True if the advice, mod, method and kind are equal.
     def == x
       return false unless self.class === x
       @advice == x.advice && @mod == x.mod && @method == x.method && @kind == x.kind
     end
 
+    # Support for Hash.
     def hash
       @advice.hash ^ @mod.hash ^ @method.hash ^ @kind.hash
     end
 
+    # Returns the target Module for the kind of method.
     def mod_target
       case @kind
       when :instance
@@ -230,6 +264,7 @@ class CheapAdvice
       end
     end
 
+    # Resolves mod Strings to the actual target Module.
     def mod_resolve
       case @mod
       when Module
@@ -243,6 +278,7 @@ class CheapAdvice
       end
     end
 
+    # Registers the before, after and around advice methods.
     def register_advice_methods!
       @mutex.synchronize do
         return self if @advice_methods_registered
@@ -259,7 +295,43 @@ class CheapAdvice
       self
     end
 
+    # Defines the new advised method in the target Module.
+    def define_new_method!
+      advised = self
+      
+      advised.mod_target.instance_eval do
+        define_method advised.new_method do | *args, &block |
+          ar = ActivationRecord.new(advised, self, args, block)
+          
+          # Proc to invoke the old method with :before and :after advise hooks.
+          body = Proc.new do
+            self.__send__(advised.before_method, ar)
+            begin
+              ar.result = self.__send__(advised.old_method, *ar.args, &ar.block)
+            rescue Exception => err
+              ar.error = err
+            ensure
+              self.__send__(advised.after_method, ar)
+            end
+            
+            ar.result
+          end
+          
+          # Invoke the :around advice with the body Proc.
+          self.__send__(advised.around_method, ar, body)
+          
+          # Reraise Exception, if occured.
+          raise ar.error if ar.error
+          
+          # Return the message result to caller.
+          ar.result
+        end # define_method
+      end # instance_eval
 
+      self
+    end
+
+    # Enables the advice on this method.
     def enable!
       @mutex.synchronize do
         return self if @enabled
@@ -279,6 +351,7 @@ class CheapAdvice
     end
     alias :advise! :enable!
 
+    # Disables the advice on this method.
     def disable!
       @mutex.synchronize do
         return self if ! @enabled
@@ -301,25 +374,46 @@ class CheapAdvice
 
   # Represents the activation record of a method invocation.
   class ActivationRecord
-    attr_reader :advised, :rcvr, :args, :block
-    attr_accessor :result, :error, :body
+    # The Advised method binding.
+    attr_reader :advised
+
+    # The original message receiver, arguments and block (if given).
+    attr_accessor :rcvr, :args, :block
+
+    # The original message return result available in :around or :after advice.
+    attr_accessor :result
+
+    # The Exception rescued from the advised method.
+    # Usually nil if no exception was raised; if not nil, Exception is reraised after the :around advice.
+    attr_accessor :error
+
+=begin
+    # The Proc to invoke the original method body. 
+    # Use ar.body.call().
+    attr_accessor :body
+=end
     
     def initialize *args
       @advised, @rcvr, @args, @block = *args
     end
 
+    # Returns the Advice of the Advised method.
     def advice
       @advised.advice
     end
 
+    # The Module of the Advised method.
+    # This may *not* be the same as #rcvr.class.
     def mod
       @advised.mod
     end
 
+    # The Symbol name of the Advised method.
     def method
       @advised.method
     end
 
+    # The call stack with CheapAdvice methods filtered out.
     def caller(offset = 0)
       ::Kernel.caller(offset + 2)
     end

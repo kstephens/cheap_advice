@@ -14,8 +14,8 @@
     :options:
       :trace:
         :log_before: true
-        :log_args: true
-        :log_after: true
+        :log_args:   true
+        :log_after:  true
         :log_result: false
 
   MyClass#bar: false

@@ -13,11 +13,13 @@ class CheapAdvice
         log_dst = a.logger[ad.logger] || a.logger[nil]
 
         msg = nil
+        formatter = nil
 
         if ad[:log_before] != false
           a.log(log_dst) do 
+            formatter = a.new_formatter
             msg = "#{ar.rcvr.class} #{ar.method}"
-            msg = "#{msg} ( #{a.format(ar.args, :args)} )" if ad[:log_args] != false
+            msg = "#{msg} ( #{formatter.format(ar.args, :args)} )" if ad[:log_args] != false
             "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} {"
           end
         end
@@ -26,12 +28,13 @@ class CheapAdvice
 
         if ad[:log_after] != false
           a.log(log_dst) do
+            formatter ||= a.new_formatter
             unless msg
               msg = "#{ar.rcvr.class} #{ar.method}"
-              msg = "#{msg} ( #{a.format(ar.args, :args)} )" if ad[:log_args] != false
+              msg = "#{msg} ( #{formatter.format(ar.args, :args)} )" if ad[:log_args] != false
             end
             msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
-            msg = "#{msg} => #{a.format(ar.result, :result)}" if ad[:log_result] != false
+            msg = "#{msg} => #{formatter.format(ar.result, :result)}" if ad[:log_result] != false
             msg
           end
         end
@@ -42,10 +45,9 @@ class CheapAdvice
     end
 
     module Behavior
-      def format obj, mode
-        formatter.new(*formatter_options).format(obj, mode)
+      def new_formatter
+        formatter.new(*formatter_options)
       end
-
       def formatter
         @options[:formatter] ||= DefaultFormatter
       end

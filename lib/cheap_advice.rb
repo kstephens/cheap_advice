@@ -92,6 +92,9 @@ class CheapAdvice
   #   advice.advise! MyClass, :instance_method, options_hash
   #   advice.advise! MyClass, :class_method, :class
   #
+  # Each Advised object is extended with #advised_extend.
+  # The #advised Array lists all Advised object.
+  #
   def advise! mod, method, *opts
     return mod.map { | x | advise! x, method, *opts } if 
       Array === mod
@@ -374,25 +377,23 @@ class CheapAdvice
 
   # Represents the activation record of a method invocation.
   class ActivationRecord
-    # The Advised method binding.
+    # The Advised method binding object.
     attr_reader :advised
 
     # The original message receiver, arguments and block (if given).
+    # Can be modified by the advice blocks.
     attr_accessor :rcvr, :args, :block
 
-    # The original message return result available in :around or :after advice.
+    # The original message return result available in the :around or :after advice blocks.
+    # Value can be changed in the advice blocks to alter the return result.
     attr_accessor :result
 
-    # The Exception rescued from the advised method.
-    # Usually nil if no exception was raised; if not nil, Exception is reraised after the :around advice.
+    # Any Exception rescued from the original method.
+    # Usually nil if no exception was raised; 
+    # if not nil, Exception is reraised after the :around advice block.
+    # Can be modified by the :after advice block.
     attr_accessor :error
 
-=begin
-    # The Proc to invoke the original method body. 
-    # Use ar.body.call().
-    attr_accessor :body
-=end
-    
     def initialize *args
       @advised, @rcvr, @args, @block = *args
     end
@@ -411,6 +412,11 @@ class CheapAdvice
     # The Symbol name of the Advised method.
     def method
       @advised.method
+    end
+
+    # The method kind.
+    def kind
+      @advised.kind
     end
 
     # The call stack with CheapAdvice methods filtered out.

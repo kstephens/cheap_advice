@@ -43,11 +43,14 @@ class CheapAdvice
 
     module Behavior
       def format obj, mode
-        formatter.new.format(obj, mode)
+        formatter.new(*formatter_options).format(obj, mode)
       end
 
       def formatter
         @options[:formatter] ||= DefaultFormatter
+      end
+      def formatter_options
+        @options[:formatter_options] ||= [ ]
       end
 
       def logger
@@ -92,6 +95,9 @@ class CheapAdvice
     end
 
     class DefaultFormatter
+      def initialize *args
+      end
+
       def format obj, mode
         obj = obj.inspect
         if mode == :args

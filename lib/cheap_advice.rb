@@ -217,12 +217,12 @@ class CheapAdvice
         @advised_id = @@advised_id += 1
       end
 
-      @old_method = "__advice_old_#{@@advised_id}_#{@method}"
-      @new_method = "__advice_new_#{@@advised_id}_#{@method}"
+      @old_method = :"__advice_old_#{@@advised_id}_#{@method}"
+      @new_method = :"__advice_new_#{@@advised_id}_#{@method}"
     
-      @before_method = "__advice_before_#{@@advised_id}_#{@method}"
-      @after_method  = "__advice_after_#{@@advised_id}_#{@method}"
-      @around_method = "__advice_around_#{@@advised_id}_#{@method}"
+      @before_method = :"__advice_before_#{@@advised_id}_#{@method}"
+      @after_method  = :"__advice_after_#{@@advised_id}_#{@method}"
+      @around_method = :"__advice_around_#{@@advised_id}_#{@method}"
 
       @enabled = 
         @advice_methods_applied = false
@@ -316,7 +316,6 @@ class CheapAdvice
             ensure
               self.__send__(advised.after_method, ar)
             end
-            
             ar.result
           end
           

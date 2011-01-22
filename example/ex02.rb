@@ -20,6 +20,9 @@ class MyClass
   def bar(arg)
     24 + arg
   end
+  def raise_error(arg)
+    raise ArgumentError, "#{arg.inspect}"
+  end
 end
 
 trace_advice = nil
@@ -73,6 +76,10 @@ Benchmark.bm(40) do | bm |
       a = MyClass.new
       a.foo(123)
       a.bar(456)
+      begin
+        a.raise_error(:aSymbol)
+      rescue Exception
+      end
     end
   end
 end

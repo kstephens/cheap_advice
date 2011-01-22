@@ -34,7 +34,11 @@ class CheapAdvice
               msg = "#{msg} ( #{formatter.format(ar.args, :args)} )" if ad[:log_args] != false
             end
             msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
-            msg = "#{msg} => #{formatter.format(ar.result, :result)}" if ad[:log_result] != false
+            if ar.error 
+              msg = "#{msg} ERROR #{formatter.format(ar.error, :error)}" if ad[:log_error] != false
+            else
+              msg = "#{msg} => #{formatter.format(ar.result, :result)}" if ad[:log_result] != false
+            end
             msg
           end
         end

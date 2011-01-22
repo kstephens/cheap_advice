@@ -20,3 +20,5 @@
 
   MyClass#bar: false
 
+  MyClass#raise_error: true
+

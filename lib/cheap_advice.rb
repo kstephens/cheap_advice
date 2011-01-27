@@ -393,8 +393,18 @@ class CheapAdvice
     # Can be modified by the :after advice block.
     attr_accessor :error
 
+    # Arbitraty data accessed by #[], #[]=
+    attr_accessor :data
+
     def initialize *args
       @advised, @rcvr, @args, @block = *args
+    end
+
+    def [] key
+      (@data || EMPTY_Hash)[key]
+    end
+    def []= key, value
+      (@data ||= { })[key] = value
     end
 
     # Returns the Advice of the Advised method.

@@ -14,13 +14,11 @@ class CheapAdvice
 
         msg = nil
         formatter = nil
-
         if ad[:log_before] != false
-          a.log(log_dst) do 
+          a.log(log_dst) do
             formatter = a.new_formatter
-            msg = "#{ar.rcvr.class} #{ar.method}"
-            msg = "#{msg} ( #{formatter.format(ar.args, :args)} )" if ad[:log_args] != false
-            "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} {"
+            ar[:before_time] = Time.now
+            formatter.record(ar, :before)
           end
         end
 
@@ -29,17 +27,13 @@ class CheapAdvice
         if ad[:log_after] != false
           a.log(log_dst) do
             formatter ||= a.new_formatter
-            unless msg
-              msg = "#{ar.rcvr.class} #{ar.method}"
-              msg = "#{msg} ( #{formatter.format(ar.args, :args)} )" if ad[:log_args] != false
-            end
-            msg = "#{ad.log_prefix}#{Time.now.iso8601(6)} #{msg} }"
-            if ar.error 
-              msg = "#{msg} ERROR #{formatter.format(ar.error, :error)}" if ad[:log_error] != false
+            ar[:after_time] = Time.now
+            if ar.error
+              ar[:error] = ar.error   if ad[:log_error] != false
             else
-              msg = "#{msg} => #{formatter.format(ar.result, :result)}" if ad[:log_result] != false
+              ar[:result] = ar.result if ad[:log_result] != false
             end
-            msg
+            formatter.record(ar, :after)
           end
         end
       end
@@ -105,11 +99,49 @@ class CheapAdvice
       end
 
       def format obj, mode
+        case mode
+        when :module
+          return obj && obj.name
+        when :time
+          return obj && obj.iso8601(6)
+        when :error
+          return "ERROR #{obj.inspect}"
+        when :result
+          return "=> #{obj.inspect}"
+        end
+
         obj = obj.inspect
         if mode == :args
           obj = obj.to_s.gsub(/\A\[|\]\Z/, '')
         end
         obj
+      end
+
+      # Formats the ActivationRecord for the log.
+      def record ar, mode
+        ad = ar.advised
+        msg = nil
+        case mode
+        when :before
+          ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
+          ar[:meth_class] ||= "#{ar.rcvr.class} #{ar.method}"
+          msg = "#{msg}#{format(ar[:before_time], :time)} #{ar[:meth_class]}"
+          msg = "#{msg} ( #{ar[:args]} )" if ar[:args]
+          msg = "#{msg} {"
+        when :after
+          ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
+          ar[:meth_class] ||= "#{ar.rcvr.class} #{ar.method}"
+          msg = "#{msg}#{format(ar[:after_time],  :time)} #{ar[:meth_class]}"
+          msg = "#{msg} ( #{ar[:args]} )" if ar[:args]
+          msg = "#{msg} }"
+          if ar.error
+            msg = "#{msg} #{format(ar[:error],  :error)}"  if ad[:log_error] != false
+          else
+            msg = "#{msg} #{format(ar[:result], :result)}" if ad[:log_result] != false
+          end
+        end
+        msg = "#{ad.log_prefix}#{msg}" if msg
+        msg
       end
     end
   end

@@ -5,6 +5,7 @@
     :options:
       :trace:
         :logger: :default
+        :log_prefix: "YO "
 
   MyClass:
     :advice:  trace

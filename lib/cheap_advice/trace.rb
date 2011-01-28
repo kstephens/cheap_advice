@@ -118,6 +118,8 @@ class CheapAdvice
 
       def format obj, mode
         case mode
+        when :rcvr
+          obj && obj.to_s
         when :module
           obj && obj.name
         when :time
@@ -166,6 +168,7 @@ class CheapAdvice
           ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
           ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
           msg << "#{format(ar[:"time_#{mode}"], :time)} #{ar[:meth]}"
+          msg << " #{format(ar.rcvr, :rcvr)}" if ad[:log_rcvr]
           msg << " ( #{ar[:args]} )" if ar[:args]
         end
 
@@ -187,18 +190,25 @@ class CheapAdvice
 
     class YamlFormatter < BaseFormatter
       def to_hash ar, mode
+        ad = ar.advised
         data = (ar.advised.options[:log_data] || EMPTY_Hash).dup
         # pp [ :'ar.data=', ar.data ]
         data.update(ar.data)
         # pp [ :'data=', data ]
-        data[:log_prefix] = ar.advised.log_prefix(logger, ar)
+        if x = ad.log_prefix(logger, ar)
+          data[:log_prefix] = x
+        end
         data[:method] = ar.method
         data[:module] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind
         data[:signature] = ar.method_to_s
+        data[:rcvr] = format(ar.rcvr, :rcvr) if ad[:log_rcvr]
         data[:rcvr_class] = ar.rcvr.class.name
-        x = data[:time_after] && data[:time_before] && data[:time_after].to_f - data[:time_before].to_f
-        data[:time_elapsed] = x if x
+        if x = data[:time_after] && 
+            data[:time_before] && 
+            (data[:time_after].to_f - data[:time_before].to_f)
+          data[:time_elapsed] = x
+        end
         data
       end
 

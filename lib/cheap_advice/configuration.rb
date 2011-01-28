@@ -30,9 +30,10 @@ class CheapAdvice
           target_config = { :enabled => target_config }
         end
         t.update(target_config) if target_config
-        t[:advice] = t[:advice].split(/\s+|\s*,\s*/) if String === t[:advice]
-        t[:advice] = t[:advice].inject({}) { | h, k | h[k] = true; h } if Array === t[:advice] 
-        t[:advice] ||= { }
+        t_advice = t[:advice]
+        t_advice = t_advice.split(/\s+|\s*,\s*/) if String === t_advice
+        raise "#{target_name} :advice is a Hash" if Hash === t_advice 
+        t[:advice] = t_advice || [ ]
         case
         when t[:method].nil? && t[:mod].nil? # global default.
           d[nil] = t
@@ -61,7 +62,7 @@ class CheapAdvice
 
     def disable!
       @targets.each do | t |
-        (t[:advice] || EMPTY_Hash).each do | advice_name, enabled |
+        (t[:advice] || EMPTY_Array).each do | advice_name |
           advice_name = advice_name.to_sym
           if advised = (t[:advised] || EMPTY_Hash)[advice_name]
             advised.disable!
@@ -73,8 +74,7 @@ class CheapAdvice
 
     def enable!
       @targets.each do | t |
-        (t[:advice] || EMPTY_Hash).each do | advice_name, enabled |
-          next unless enabled
+        (t[:advice] || EMPTY_Array).each do | advice_name |
           advice_name = advice_name.to_sym
           if advice = @advice[advice_name]
             options = t[:options][nil]

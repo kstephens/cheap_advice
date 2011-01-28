@@ -10,14 +10,15 @@ class CheapAdvice
       trace = CheapAdvice.new(:around, opts) do | ar, body |
         a = ar.advice
         ad = ar.advised
-        ar[:logger] = logger = a.logger[ad.logger] || a.logger_default
+        logger = ad.logger[:name] || ad.logger_default[:name]
+        logger = a.logger[logger] || a.logger_default[logger]
 
         msg = nil
         formatter = nil
         if ad[:log_before] != false
           a.log(logger) do
             formatter = a.new_formatter(logger)
-            ar[:before_time] = Time.now
+            ar[:time_before] = Time.now
             formatter.record(ar, :before)
           end
         end
@@ -27,7 +28,7 @@ class CheapAdvice
         if ad[:log_after] != false
           a.log(logger) do
             formatter ||= a.new_formatter(logger)
-            ar[:after_time] = Time.now
+            ar[:time_after] = Time.now
             if ar.error
               ar[:error] = ar.error   if ad[:log_error] != false
             else
@@ -44,6 +45,7 @@ class CheapAdvice
 
     module Behavior
       def logger
+        # $stderr.puts " #{self.class} @options = #{@options.inspect}"
         @options[:logger] ||= { }
       end
       def logger_default
@@ -51,7 +53,7 @@ class CheapAdvice
       end
 
       def new_formatter logger
-        formatter(logger).new(*formatter_options(logger))
+        formatter(logger).new(logger, *formatter_options(logger))
       end
 
       def formatter logger
@@ -109,7 +111,10 @@ class CheapAdvice
     end
 
     class BaseFormatter
-      def initialize *args
+      attr_reader :logger
+
+      def initialize logger, *args
+        @logger = logger
       end
 
       def format obj, mode
@@ -131,15 +136,14 @@ class CheapAdvice
     end
       
     class DefaultFormatter < BaseFormatter
-      def initialize *args
-      end
-
       def format obj, mode
         case mode
         when :error
           return "ERROR #{obj.inspect}"
         when :result
           return "=> #{obj.inspect}"
+        when :time
+          return super
         else
           obj = super || obj
         end
@@ -151,40 +155,44 @@ class CheapAdvice
         obj
       end
 
-      # Formats the ActivationRecord for the log.
+      # Formats the ActivationRecord for the logger.
       def record ar, mode
         ad = ar.advised
         msg = nil
+
+        case mode
+        when :before, :after
+          msg = ad.log_prefix(logger).to_s.dup
+          ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
+          ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
+          msg << "#{format(ar[:"time_#{mode}"], :time)} #{ar[:meth]}"
+          msg << " ( #{ar[:args]} )" if ar[:args]
+        end
+
         case mode
         when :before
-          msg = ad.log_prefix(ar[:logger]).to_s.dup
-          ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
-          ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
-          msg << "#{format(ar[:before_time], :time)} #{ar[:meth]}"
-          msg << "#{msg} ( #{ar[:args]} )" if ar[:args]
           msg << " {"
         when :after
-          msg = ad.log_prefix(ar[:logger]).to_s.dup
-          ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
-          ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
-          msg << "#{format(ar[:after_time],  :time)} #{ar[:meth]}"
-          msg << "( #{ar[:args]} )" if ar[:args]
           msg << " }"
           if ar.error
-            msg << "#{format(ar[:error],  :error )}" if ad[:log_error]  != false
+            msg << " #{format(ar[:error],  :error )}" if ad[:log_error]  != false
           else
-            msg << "#{format(ar[:result], :result)}" if ad[:log_result] != false
+            msg << " #{format(ar[:result], :result)}" if ad[:log_result] != false
           end
         end
+
         msg
       end
     end # class
 
     class YamlFormatter < BaseFormatter
       def to_hash ar, mode
-        data = ar.data.merge(ar[:record_data])
+        data = (ar.advised.options[:log_data] || EMPTY_Hash).dup
+        # pp [ :'ar.data=', ar.data ]
+        data.update(ar.data)
+        pp [ :'data=', data ]
         data[:method] = ar.method
-        data[:module] = ar.mod.name
+        data[:module] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind
         data[:signature] = ar.method_to_s
         data[:rcvr_class] = ar.rcvr.class.name

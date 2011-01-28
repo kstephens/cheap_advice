@@ -4,8 +4,10 @@
     :enabled: true
     :options:
       :trace:
-        :logger: :default
-        :log_prefix: "YO "
+        :logger:
+          :name: :default
+          :default: 
+            :log_prefix: "YO "
 
   MyClass:
     :advice:  trace
@@ -14,7 +16,8 @@
   MyClass#bar:
     :options:
       :trace:
-        :logger: :alternate
-        :log_after: false
-        :log_result: false
+        :logger: 
+          :name: :alternate
+          :log_after: false
+          :log_result: false
 

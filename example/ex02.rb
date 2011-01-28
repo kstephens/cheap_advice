@@ -25,6 +25,9 @@ class MyClass
   end
 end
 
+class MySubclass < MyClass
+end
+
 trace_advice = nil
 trace_config = nil
 
@@ -79,6 +82,9 @@ Benchmark.bm(40) do | bm |
       a = MyClass.new
       a.foo(123)
       a.bar(456)
+      b = MySubclass.new
+      b.foo(789)
+      b.bar(012)
       begin
         a.raise_error(:aSymbol)
       rescue Exception

@@ -403,28 +403,30 @@ class CheapAdvice
     # Can be modified by the :after advice block.
     attr_accessor :error
 
-    # Arbitraty data accessed by #[], #[]=
+    # Arbitrary data accessed by #[], #[]=.
+    # Advice blocks can use this to pass data to other blocks.
+    # May be a frozen, empty Hash.
     attr_accessor :data
 
     def initialize *args
       @advised, @rcvr, @args, @block = *args
     end
 
+    def data
+      @data || EMPTY_Hash
+    end
+
     def [] key
       (@data || EMPTY_Hash)[key]
     end
+
     def []= key, value
       (@data ||= { })[key] = value
     end
 
-    # The following methods are delegated to #advised.
-    [ :advice, :mod, :method, :kind, :method_to_s ].each do | m |
-      eval <<"END"
-        def #{m}
-          @advised.#{m}
-        end
-END
-    end
+    # This methods are delegated to #advised.
+    DELEGATE_TO_ADVISED = [ :advice, :mod, :method, :kind, :method_to_s ]
+    eval(DELEGATE_TO_ADVISED.map{|m| "def #{m}; @advised.#{m}; end; "} * "\n")
 
     # The call stack with CheapAdvice methods filtered out.
     def caller(offset = 0)

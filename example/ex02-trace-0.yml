@@ -4,7 +4,8 @@
     :enabled: false
     :options:
       :trace:
-        :logger: :default
+        :logger:
+          :name: :default
 
   'MyClass':
     :advice:  trace

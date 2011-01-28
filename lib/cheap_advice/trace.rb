@@ -201,9 +201,6 @@ class CheapAdvice
 
       def record ar, mode
         case mode
-        when :before
-          to_hash(ar, mode)
-          nil
         when :after
           data = to_hash(ar, mode)
           YAML.dump(data)

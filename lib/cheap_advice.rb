@@ -109,12 +109,23 @@ class CheapAdvice
     method = method.to_sym
 
     @mutex.synchronize do
+      unless @enabled_once
+        self.enabled!
+        @enabled_once = true
+      end
+
       advised = advised_for mod, method, kind, opts_hash
       
       advised.enable! # Should this really be automatically enabled??
       
       advised
     end
+  end
+
+  # Called once the first time this advice is enabled.
+  # Instances can override this method.
+  def enabled!
+    self
   end
 
   def advised_select mod, method, kind
@@ -357,6 +368,7 @@ class CheapAdvice
           alias_method this.method, this.new_method
         end
 
+        enabled!
         @enabled = true
       end
       self
@@ -374,12 +386,25 @@ class CheapAdvice
             method_defined? this.old_method
         end
 
+        disabled!
         @enabled = false
       end
 
       self
     end
     alias :unadvise! :disable!
+
+    # Called when Advised is enabled.
+    # Instances can override this method.
+    def enabled!
+      self
+    end
+
+    # Called when Advised is enabled.
+    # Instances can override this method.
+    def disabled!
+      self
+    end
 
   end
 

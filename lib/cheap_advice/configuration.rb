@@ -7,6 +7,8 @@ class CheapAdvice
 
     attr_accessor :config, :advice
 
+    attr_accessor :advised
+
     def initialize opts = nil
       opts ||= EMPTY_Hash
       opts.each do | k, v |
@@ -14,6 +16,7 @@ class CheapAdvice
       end
       @advice ||= { }
       @targets = [ ]
+      @advised = [ ]
     end
 
     def configure!
@@ -69,10 +72,12 @@ class CheapAdvice
           end
         end
       end
+      @advised.clear
       self
     end
 
     def enable!
+      @advised.clear
       @targets.each do | t |
         (t[:advice] || EMPTY_Array).each do | advice_name |
           advice_name = advice_name.to_sym
@@ -80,7 +85,8 @@ class CheapAdvice
             options = t[:options][nil]
             options = merge!(options, t[:options][advice_name])
             # puts "#{t.inspect} options => #{options.inspect}"
-            (t[:advised] ||= { })[advice_name] = advice.advise!(t[:mod], t[:method], t[:kind], options)
+            (t[:advised] ||= { })[advice_name] = advised = advice.advise!(t[:mod], t[:method], t[:kind], options)
+            @advised << advised
           else
             raise Error, "no advice #{advice_name.inspect} for #{t.inspect}"
           end

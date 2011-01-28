@@ -197,7 +197,8 @@ class CheapAdvice
         data[:kind] = ar.kind
         data[:signature] = ar.method_to_s
         data[:rcvr_class] = ar.rcvr.class.name
-        data[:time_elapsed] = data[:time_after] && data[:time_before] && data[:time_after].to_f - data[:time_before].to_f
+        x = data[:time_after] && data[:time_before] && data[:time_after].to_f - data[:time_before].to_f
+        data[:time_elapsed] = x if x
         data
       end
 

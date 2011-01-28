@@ -37,7 +37,17 @@ RSpec::Core::RakeTask.new(:rcov) do |spec|
   spec.rcov = true
 end
 
+task :example do
+  Dir['example/ex*.rb'].sort.each do | ex |
+    cpid = Process.fork do 
+      load ex
+    end
+    Process.wait(cpid) or raise "#{ex} failed"
+  end
+end
+
 task :default => :spec
+task :default => :example
 
 require 'rake/rdoctask'
 Rake::RDocTask.new do |rdoc|

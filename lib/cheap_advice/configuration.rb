@@ -5,18 +5,47 @@ class CheapAdvice
   class Configuration
     class Error < ::CheapAdvice::Error; end
 
-    attr_accessor :config, :advice
+    # Configuration input hash.
+    attr_accessor :config
 
+    # Hash mapping advice names to CheapAdvice objects.
+    attr_accessor :advice
+
+    # Array of CheapAdvice::Advised methods.
     attr_accessor :advised
+
+    # Hash of file names that were explicity required before applying advice.
+    attr_accessor :required
+
+    # Flag
+    attr_accessor :config_changed
+    alias :config_changed? :config_changed
+
+    attr_accessor :verbose
 
     def initialize opts = nil
       opts ||= EMPTY_Hash
+      @verbose = false
       opts.each do | k, v |
         send(:"#{k}=", v)
       end
       @advice ||= { }
       @targets = [ ]
       @advised = [ ]
+      @required = { }
+    end
+
+    def config_changed!
+      @config_changed = true
+      self
+    end
+
+    def configure_if_changed!
+      if config_changed?
+        configure!
+        @config_changed = false
+      end
+      self
     end
 
     def configure!
@@ -26,24 +55,25 @@ class CheapAdvice
       c = [ ]
       d = { }
       get_config.each do | target_name, target_config |
-        t = parse_target(target_name)
-        # puts "#{target_name.inspect} => #{t.inspect}"
-        case target_config
-        when true, false
-          target_config = { :enabled => target_config }
-        end
-        t.update(target_config) if target_config
-        t_advice = t[:advice]
-        t_advice = t_advice.split(/\s+|\s*,\s*/) if String === t_advice
-        raise "#{target_name} :advice is a Hash" if Hash === t_advice 
-        t[:advice] = t_advice || [ ]
-        case
-        when t[:method].nil? && t[:mod].nil? # global default.
-          d[nil] = t
-        when t[:method].nil? # module default.
-          d[t[:mod]] = t
-        else
-          c << t # real target
+        annotate_error "target=#{target_name}" do
+          t = parse_target(target_name)
+          # _log { "#{target_name.inspect} => #{t.inspect}" }
+          case target_config
+          when true, false
+            target_config = { :enabled => target_config }
+          end
+          t.update(target_config) if target_config
+          [ :advice, :require ].each do | k |
+            t[k] = as_array(t[k]) if t.key?(k)
+          end
+          case
+          when t[:method].nil? && t[:mod].nil? # global default.
+            d[nil] = t
+          when t[:method].nil? # module default.
+            d[t[:mod]] = t
+          else
+            c << t # real target
+          end
         end
       end
       d[nil] ||= { }
@@ -53,7 +83,7 @@ class CheapAdvice
       c.each do | t |
         x = merge!(d[nil].dup, d[t[:mod]] || EMPTY_Hash)
         t = merge!(x, t)
-        # $stderr.puts "target = #{t.inspect}"
+        # _log { "target = #{t.inspect}" }
         next if t[:enabled] == false
         @targets << t
       end
@@ -79,20 +109,51 @@ class CheapAdvice
     def enable!
       @advised.clear
       @targets.each do | t |
+        t_str = target_as_string(t)
+        annotate_error "target=#{t_str.inspect}" do
+          (t[:require] || EMPTY_Array).each do | r |
+            _log { "#{t_str}: require #{r}" }
+            unless @required[r]
+              require r
+              @required[r] = true
+            end
+          end
+        end
+            
         (t[:advice] || EMPTY_Array).each do | advice_name |
           advice_name = advice_name.to_sym
-          if advice = @advice[advice_name]
+          annotate_error "target=#{target_as_string(t)} advice=#{advice_name.inspect}" do
+            unless advice = @advice[advice_name]
+              raise Error, "no advice by that name"
+            end
             options = t[:options][nil]
             options = merge!(options, t[:options][advice_name])
-            # puts "#{t.inspect} options => #{options.inspect}"
-            (t[:advised] ||= { })[advice_name] = advised = advice.advise!(t[:mod], t[:method], t[:kind], options)
+            # _log { "#{t.inspect} options => #{options.inspect}" }
+            
+            advised = advice.advise!(t[:mod], t[:method], t[:kind], options)
+
+            (t[:advised] ||= { })[advice_name] = advised
+
             @advised << advised
-          else
-            raise Error, "no advice #{advice_name.inspect} for #{t.inspect}"
           end
         end
       end
       self
+    end
+
+    def _log msg = nil
+      return self unless @verbose
+      msg ||= yield if block_given?
+      $stderr.puts "#{self.class}: #{msg}"
+      self
+    end
+
+    def annotate_error x
+      yield
+    rescue Exception => err
+      msg = "in #{x.inspect}: #{err.inspect}"
+      _log { "ERROR: #{msg}\n  #{err.backtrace * "\n  "}" }
+      raise Error, msg, err.backtrace
     end
 
     def get_config
@@ -106,6 +167,13 @@ class CheapAdvice
       end
     end
 
+    def as_array x
+      x = EMPTY_Array if x == nil
+      x = x.split(/\s+|\s*,\s*/) if String === x
+      raise "Unexpected Hash" if Hash === x
+      x
+    end
+
     def parse_target x
       case x
       when nil
@@ -113,15 +181,18 @@ class CheapAdvice
       when Hash
         x
       when String, Symbol
-        if x.to_s =~ /\A([a-z0-9_:]+)(?:([#\.])([a-z0-9_]+[!?]?))?\Z/i
+        if x.to_s =~ /\A([a-z0-9_:]+)(?:([#\.])([a-z0-9_]+[=\!\?]?))?\Z/i
           { :mod => $1,
-            :kind => $2 == '.' ? :module : :instance,
+            :kind => $2 && ($2 == '.' ? :module : :instance),
             :method => $3,
           }
         else
           raise Error, "cannot parse #{x.inspect}"
         end
       end
+    end
+    def target_as_string t
+      "#{t[:mod]}#{t[:kind] == :instance ? '#' : '.'}#{t[:method]}"
     end
 
     def merge! dst, src

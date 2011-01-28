@@ -13,7 +13,6 @@ class CheapAdvice
         logger = ad.logger[:name] || ad.logger_default[:name]
         logger = a.logger[logger] || a.logger_default[logger]
 
-        msg = nil
         formatter = nil
         if ad[:log_before] != false
           a.log(logger) do
@@ -190,7 +189,7 @@ class CheapAdvice
         data = (ar.advised.options[:log_data] || EMPTY_Hash).dup
         # pp [ :'ar.data=', ar.data ]
         data.update(ar.data)
-        pp [ :'data=', data ]
+        # pp [ :'data=', data ]
         data[:method] = ar.method
         data[:module] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind

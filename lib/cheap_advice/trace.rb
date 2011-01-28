@@ -67,14 +67,14 @@ class CheapAdvice
           [ ]
       end
 
-      def log_prefix logger
+      def log_prefix logger, ar
         pre = 
           logger[:log_prefix] ||= 
           logger_default[:log_prefix] ||= 
           EMPTY_String
         case pre
         when Proc
-          pre.call
+          pre.call(ar)
         else
           pre
         end
@@ -161,7 +161,8 @@ class CheapAdvice
 
         case mode
         when :before, :after
-          msg = ad.log_prefix(logger).to_s.dup
+          msg = ad.log_prefix(logger, ar).to_s
+          msg = msg.dup if msg.frozen?
           ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
           ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
           msg << "#{format(ar[:"time_#{mode}"], :time)} #{ar[:meth]}"
@@ -190,6 +191,7 @@ class CheapAdvice
         # pp [ :'ar.data=', ar.data ]
         data.update(ar.data)
         # pp [ :'data=', data ]
+        data[:log_prefix] = ar.advised.log_prefix(logger, ar)
         data[:method] = ar.method
         data[:module] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind

@@ -6,6 +6,7 @@ require 'thread'
 class CheapAdvice
   EMPTY_Hash = { }.freeze
   EMPTY_Array = [ ].freeze
+  EMPTY_String = ''.freeze
 
   class Error < ::Exception; end
 
@@ -244,7 +245,16 @@ class CheapAdvice
     end
 =end
 
-    # True if the advice, mod, method and kind are equal.
+    INSTANCE_SEP = '#'.freeze
+    MODULE_SEP = '.'.freeze
+
+    # The string name for the method.
+    def method_to_s
+      @method_to_s ||=
+        "#{@mod}#{@kind == :instance ? INSTANCE_SEP : MODULE_SEP}#{@method}".freeze
+    end
+
+     # True if the advice, mod, method and kind are equal.
     def == x
       return false unless self.class === x
       @advice == x.advice && @mod == x.mod && @method == x.method && @kind == x.kind
@@ -407,25 +417,13 @@ class CheapAdvice
       (@data ||= { })[key] = value
     end
 
-    # Returns the Advice of the Advised method.
-    def advice
-      @advised.advice
-    end
-
-    # The Module of the Advised method.
-    # This may *not* be the same as #rcvr.class.
-    def mod
-      @advised.mod
-    end
-
-    # The Symbol name of the Advised method.
-    def method
-      @advised.method
-    end
-
-    # The method kind.
-    def kind
-      @advised.kind
+    # The following methods are delegated to #advised.
+    [ :advice, :mod, :method, :kind, :method_to_s ].each do | m |
+      eval <<"END"
+        def #{m}
+          @advised.#{m}
+        end
+END
     end
 
     # The call stack with CheapAdvice methods filtered out.

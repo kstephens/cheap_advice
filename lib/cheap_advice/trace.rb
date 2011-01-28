@@ -85,7 +85,7 @@ class CheapAdvice
         return msg unless logger
         msg ||= yield if block_given?
         return msg if msg.nil?
-        dst = logger[:stream]
+        dst = logger[:target]
         case dst
         when nil
           nil

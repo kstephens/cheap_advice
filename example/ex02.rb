@@ -41,11 +41,11 @@ Benchmark.bm(40) do | bm |
     
     # Configure Trace loggers by name.
     trace_advice.logger[:default] = { 
-      :stream => File.open(File.expand_path("../ex02-default.log", __FILE__), "w"),
+      :target => File.open(File.expand_path("../ex02-default.log", __FILE__), "w"),
     }
     
     trace_advice.logger[:alternate] = {
-      :stream => File.open(File.expand_path("../ex02-alternate.log", __FILE__), "w"),
+      :target => File.open(File.expand_path("../ex02-alternate.log", __FILE__), "w"),
       :formatter => CheapAdvice::Trace::YamlFormatter
     }
   end

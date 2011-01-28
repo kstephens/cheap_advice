@@ -7,8 +7,10 @@ require 'yaml'
 require 'benchmark'
 
 require 'rubygems'
+=begin
 gem 'ruby-debug'
 require 'ruby-debug'
+=end
 
 ##################################################
 # Target

@@ -52,7 +52,19 @@ class CheapAdvice
       def private_method(arg)
         arg
       end
+
+      protected
+      def protected_method(arg)
+        arg
+      end
     end
+
+    class Baz < Bar
+      def calls_protected_method(arg)
+        protected_method(arg)
+      end
+    end
+
   end
 end
 
@@ -297,6 +309,31 @@ describe "CheapAdvice" do
     advised.unadvise!
 
     @b.calls_private_method(5).should == 5
+    advice_called.should == 1
+  end
+
+
+  it 'handles protected method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!(CheapAdvice::Test::Bar, :protected_method)
+    advised.scope.should == :protected
+    null_advice.advised.size.should == 1
+
+    @b = CheapAdvice::Test::Baz.new
+
+    @b.calls_protected_method(5).should == 5
+    advice_called.should == 1
+
+    advised.unadvise!
+
+    @b.calls_protected_method(5).should == 5
     advice_called.should == 1
   end
 

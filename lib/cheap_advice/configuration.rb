@@ -67,9 +67,9 @@ class CheapAdvice
             t[k] = as_array(t[k]) if t.key?(k)
           end
           case
-          when t[:method].nil? && t[:mod].nil? # global default.
+          when t[:meth].nil? && t[:mod].nil? # global default.
             d[nil] = t
-          when t[:method].nil? # module default.
+          when t[:meth].nil? # module default.
             d[t[:mod]] = t
           else
             c << t # real target
@@ -130,7 +130,7 @@ class CheapAdvice
             options = merge!(options, t[:options][advice_name])
             # _log { "#{t.inspect} options => #{options.inspect}" }
             
-            advised = advice.advise!(t[:mod], t[:method], t[:kind], options)
+            advised = advice.advise!(t[:mod], t[:meth], t[:kind], options)
 
             (t[:advised] ||= { })[advice_name] = advised
 
@@ -184,7 +184,7 @@ class CheapAdvice
         if x.to_s =~ /\A([a-z0-9_:]+)(?:([#\.])([a-z0-9_]+[=\!\?]?))?\Z/i
           { :mod => $1,
             :kind => $2 && ($2 == '.' ? :module : :instance),
-            :method => $3,
+            :meth => $3,
           }
         else
           raise Error, "cannot parse #{x.inspect}"
@@ -192,7 +192,7 @@ class CheapAdvice
       end
     end
     def target_as_string t
-      "#{t[:mod]}#{t[:kind] == :instance ? '#' : '.'}#{t[:method]}"
+      "#{t[:mod]}#{t[:kind] == :instance ? '#' : '.'}#{t[:meth]}"
     end
 
     def merge! dst, src

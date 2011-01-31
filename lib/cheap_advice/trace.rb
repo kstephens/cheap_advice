@@ -129,7 +129,7 @@ class CheapAdvice
         when :result
           obj.inspect
         when :method
-          ad = ar.method_to_s
+          ad = ar.meth_to_s
         else
           nil
         end
@@ -166,7 +166,7 @@ class CheapAdvice
           msg = ad.log_prefix(logger, ar).to_s
           msg = msg.dup if msg.frozen?
           ar[:args] ||= format(ar.args, :args) if ad[:log_args] != false
-          ar[:meth] ||= "#{ad.method_to_s} #{ar.rcvr.class}"
+          ar[:meth] ||= "#{ad.meth_to_s} #{ar.rcvr.class}"
           msg << "#{format(ar[:"time_#{mode}"], :time)} #{ar[:meth]}"
           msg << " #{format(ar.rcvr, :rcvr)}" if ad[:log_rcvr]
           msg << " ( #{ar[:args]} )" if ar[:args]
@@ -198,10 +198,10 @@ class CheapAdvice
         if x = ad.log_prefix(logger, ar)
           data[:log_prefix] = x
         end
-        data[:method] = ar.method
+        data[:method] = ar.meth
         data[:module] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind
-        data[:signature] = ar.method_to_s
+        data[:signature] = ar.meth_to_s
         data[:rcvr] = format(ar.rcvr, :rcvr) if ad[:log_rcvr]
         data[:rcvr_class] = ar.rcvr.class.name
         if x = data[:time_after] && 

@@ -75,11 +75,11 @@ describe "CheapAdvice" do
 
   before(:each) do
     @tracing_advice = CheapAdvice.new(:around) do | ar, body |
-      ar.advice.log "  TRACE: before #{ar.rcvr.class}\##{ar.method}(#{ar.args.join(", ")})"
+      ar.advice.log "  TRACE: before #{ar.rcvr.class}\##{ar.meth}(#{ar.args.join(", ")})"
       ar.advice.log "         foo = #{@foo.inspect}"
       ar.advice.log "         bar = #{@bar.inspect}"
       result = body.call
-      ar.advice.log "  TRACE: after  #{ar.rcvr.class}\##{ar.method}(#{ar.args.join(", ")}) => #{result.inspect}"
+      ar.advice.log "  TRACE: after  #{ar.rcvr.class}\##{ar.meth}(#{ar.args.join(", ")}) => #{result.inspect}"
       ar.result = "yo!"
       ar.advice.log "  TRACE: return #{ar.result.inspect}"
       "oy!" # Not relevant.
@@ -142,7 +142,7 @@ describe "CheapAdvice" do
     basic_advice.advised.size.should == 1
     advised = basic_advice.advised.first
     advised.mod.should == CheapAdvice::Test::Foo
-    advised.method.should == :do_it
+    advised.meth.should == :do_it
     advised.enabled.should == true
     
     assert_do_it f

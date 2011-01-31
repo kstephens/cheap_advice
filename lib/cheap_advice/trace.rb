@@ -191,15 +191,17 @@ class CheapAdvice
     class YamlFormatter < BaseFormatter
       def to_hash ar, mode
         ad = ar.advised
-        data = (ar.advised.options[:log_data] || EMPTY_Hash).dup
+
+        data = (ar.advice[:log_data] || EMPTY_Hash).dup
+        data.update(ar.advised[:log_data] || EMPTY_Hash)
         # pp [ :'ar.data=', ar.data ]
         data.update(ar.data)
         # pp [ :'data=', data ]
         if x = ad.log_prefix(logger, ar)
           data[:log_prefix] = x
         end
-        data[:method] = ar.meth
-        data[:module] = Module === (x = ar.mod) ? x.name : x
+        data[:meth] = ar.meth
+        data[:mod] = Module === (x = ar.mod) ? x.name : x
         data[:kind] = ar.kind
         data[:signature] = ar.meth_to_s
         data[:rcvr] = format(ar.rcvr, :rcvr) if ad[:log_rcvr]

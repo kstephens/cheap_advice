@@ -304,6 +304,8 @@ class CheapAdvice
 
     # Registers the before, after and around advice methods.
     def register_advice_methods!
+      scope # force calculation of scope before aliasing methods.
+        
       @mutex.synchronize do
         return self if @advice_methods_registered
 
@@ -354,6 +356,41 @@ class CheapAdvice
       self
     end
 
+    if RUBY_VERSION =~ /^1\.8/
+      def scope
+        @scope ||= @mutex.synchronize do
+          this = self
+          mod_target.instance_eval do 
+           case
+            when private_instance_methods(false).include?(this.method.to_s)
+              :private
+            when protected_instance_methods(false).include?(this.method.to_s)
+              :protected
+            else
+              :public
+            end
+          end
+          
+        end
+      end
+    else
+      def scope
+        @scope ||= @mutex.synchronize do
+          this = self
+          mod_target.instance_eval do 
+            case
+            when private_instance_methods(false).include?(this.method)
+              :private
+            when protected_instance_methods(false).include?(this.method)
+              :protected
+            else
+              :public
+            end
+          end
+        end
+      end     
+    end
+
     # Enables the advice on this method.
     def enable!
       @mutex.synchronize do
@@ -361,11 +398,24 @@ class CheapAdvice
 
         this = self
         mod_target.instance_eval do
+          case this.scope
+          when :public
+          else
+            public this.method
+          end
+
           alias_method this.old_method, this.method if 
-            method_defined? this.method and 
             ! method_defined? this.old_method
           
           alias_method this.method, this.new_method
+
+          case this.scope
+          when :private
+            private this.method
+          when :protected
+            protected this.method
+          end
+            
         end
 
         enabled!
@@ -382,8 +432,16 @@ class CheapAdvice
 
         this = self
         mod_target.instance_eval do
-          alias_method this.method, this.old_method if 
-            method_defined? this.old_method
+          if method_defined? this.old_method
+            alias_method this.method, this.old_method
+            
+            case this.scope
+            when :private
+              private this.method
+            when :protected
+              protected this.method
+            end
+          end
         end
 
         disabled!

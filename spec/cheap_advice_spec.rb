@@ -15,8 +15,8 @@ class CheapAdvice
 
     class Foo
       include M
-      attr_accessor :foo
-      attr_reader :_baz
+      attr_accessor :foo, :bar
+      attr_reader :_baz, :_bar
       (class << self; self; end).instance_eval do 
         attr_accessor :_baz
       end
@@ -42,6 +42,15 @@ class CheapAdvice
       
       def baz(arg)
         @_baz = 7 + arg
+      end
+
+      def calls_private_method(arg)
+        private_method(arg)
+      end
+                               
+      private
+      def private_method(arg)
+        arg
       end
     end
   end
@@ -267,6 +276,29 @@ describe "CheapAdvice" do
     advice_called.should == 1
   end
 
+  it 'handles private method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!(CheapAdvice::Test::Bar, :private_method)
+    advised.scope.should == :private
+    null_advice.advised.size.should == 1
+
+    @b = CheapAdvice::Test::Bar.new
+
+    @b.calls_private_method(5).should == 5
+    advice_called.should == 1
+
+    advised.unadvise!
+
+    @b.calls_private_method(5).should == 5
+    advice_called.should == 1
+  end
 
 end
 

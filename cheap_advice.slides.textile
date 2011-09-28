@@ -1,0 +1,66 @@
+!SLIDE
+!TITLE Cheap Advice
+
+h1. Cheap Advice
+
+* Kurt Stephens
+* Enova Financial
+* 2011/09/26
+* Slides -- TDB
+* Code -- "":http://github.com/kstephens/cheap_advice
+
+!SLIDE
+!TITLE Advice
+
+h1. Dumb code == Happy code
+
+@@@ ruby
+
+@@@
+
+!SLIDE
+!TITLE Add Logging
+
+h1. Add Logging
+
+@@@ ruby
+
+@@@
+
+!SLIDE
+!TITLE Add Security
+
+h1. Add Security
+
+@@@ ruby
+
+@@@
+
+!SLIDE
+!TITLE Separation of Concerns
+
+h1. Separation of Concerns
+
+* Logging
+* Security
+
+... are not problem-domain issues.
+
+!SLIDE
+!TITLE Advice != Aspects
+
+h1. Advice != Aspects
+
+* Aspects are woven into code based on complex "codepoint" criteria at build-time (or load-time).
+* Advice is applied to a more well-known construct: methods.
+* Advice are objects.
+* Advice can be added and removed at run-time.
+
+!SLIDE
+!TITLE Logging Advice
+
+h1. Logging Advice
+
+!SLIDE
+!TITLE Logging Advice
+

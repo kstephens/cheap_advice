@@ -128,25 +128,25 @@ class CheapAdvice
     self
   end
 
-  def advised_select mod, method, kind
+  def advised_select mod, meth, kind
     @advised.select do | ad |
       (mod ? mod == ad.mod : true) &&
-        (method ? method == ad.method : true) &&
+        (meth ? meth == ad.meth : true) &&
         (kind ? kind == ad.kind : true)
     end
   end
 
   # Returns the existing Advised binding or creates a new one.
-  def advised_for mod, method, kind, opts
-    (@advised_for[[ mod, method, kind ]] ||=
-      construct_advised_for(mod, method, kind)).set_options!(opts)
+  def advised_for mod, meth, kind, opts
+    (@advised_for[[ mod, meth, kind ]] ||=
+      construct_advised_for(mod, meth, kind)).set_options!(opts)
   end
 
   # Constructs an Advised binding from this Advice.
-  def construct_advised_for mod, method, kind
+  def construct_advised_for mod, meth, kind
     advice = self
     
-    advised = Advised.new(advice, mod, method, kind)
+    advised = Advised.new(advice, mod, meth, kind)
     
     case @advised_extend
     when nil
@@ -198,24 +198,24 @@ class CheapAdvice
     # The Advice being applied to the Module and method.
     attr_reader :advice
     # The Module, method and kind (instance, class or module method)
-    attr_reader :mod, :method, :kind
+    attr_reader :mod, :meth, :kind
     alias :cls :mod # Deprecated.
 
     # The unique Advised id used to generate unique method names.
     attr_reader :advised_id
     
     # The name of the old and new method being patched in.
-    attr_reader :old_method, :new_method
+    attr_reader :old_meth, :new_meth
 
     # The name of the before, after and around methods.
-    attr_reader :before_method, :after_method, :around_method
+    attr_reader :before_meth, :after_meth, :around_meth
 
     # True if the Advised methods are currently installed.
     attr_reader :enabled
 
     def initialize *args
       @mutex = Mutex.new
-      @advice, @mod, @method, @kind, @options = *args
+      @advice, @mod, @meth, @kind, @options = *args
 
       case @kind
       when :instance, :class, :module
@@ -229,12 +229,12 @@ class CheapAdvice
         @advised_id = @@advised_id += 1
       end
 
-      @old_method = :"__advice_old_#{@@advised_id}_#{@method}"
-      @new_method = :"__advice_new_#{@@advised_id}_#{@method}"
+      @old_meth = :"__advice_old_#{@@advised_id}_#{@meth}"
+      @new_meth = :"__advice_new_#{@@advised_id}_#{@meth}"
     
-      @before_method = :"__advice_before_#{@@advised_id}_#{@method}"
-      @after_method  = :"__advice_after_#{@@advised_id}_#{@method}"
-      @around_method = :"__advice_around_#{@@advised_id}_#{@method}"
+      @before_meth = :"__advice_before_#{@@advised_id}_#{@meth}"
+      @after_meth  = :"__advice_after_#{@@advised_id}_#{@meth}"
+      @around_meth = :"__advice_around_#{@@advised_id}_#{@meth}"
 
       @enabled = 
         @advice_methods_applied = false
@@ -245,35 +245,26 @@ class CheapAdvice
       self
     end
 
-=begin
-    def fromString str
-      case str
-      when String, Symbol
-        str.to_s.
-      else
-        raise TypeError
-      end
-    end
-=end
-
     INSTANCE_SEP = '#'.freeze
     MODULE_SEP = '.'.freeze
 
     # The string name for the method.
-    def method_to_s
-      @method_to_s ||=
-        "#{@mod}#{@kind == :instance ? INSTANCE_SEP : MODULE_SEP}#{@method}".freeze
+    # Returns "Foo#bar" for an instance method named :bar on class Foo.
+    # Returns "Foo.bar" for a class or module method named .bar on class Foo.
+    def meth_to_s
+      @meth_to_s ||=
+        "#{@mod}#{@kind == :instance ? INSTANCE_SEP : MODULE_SEP}#{@meth}".freeze
     end
 
      # True if the advice, mod, method and kind are equal.
     def == x
       return false unless self.class === x
-      @advice == x.advice && @mod == x.mod && @method == x.method && @kind == x.kind
+      @advice == x.advice && @mod == x.mod && @meth == x.meth && @kind == x.kind
     end
 
     # Support for Hash.
     def hash
-      @advice.hash ^ @mod.hash ^ @method.hash ^ @kind.hash
+      @advice.hash ^ @mod.hash ^ @meth.hash ^ @kind.hash
     end
 
     # Returns the target Module for the kind of method.
@@ -304,14 +295,16 @@ class CheapAdvice
 
     # Registers the before, after and around advice methods.
     def register_advice_methods!
+      scope # force calculation of scope before aliasing methods.
+        
       @mutex.synchronize do
         return self if @advice_methods_registered
 
         this = self
         mod_target.instance_eval do 
-          define_method(this.before_method, &this.advice.before)
-          define_method(this.after_method,  &this.advice.after)
-          define_method(this.around_method, &this.advice.around)  
+          define_method(this.before_meth, &this.advice.before)
+          define_method(this.after_meth,  &this.advice.after)
+          define_method(this.around_meth, &this.advice.around)  
         end
 
         @advice_methods_registered = true
@@ -324,24 +317,24 @@ class CheapAdvice
       advised = self
       
       advised.mod_target.instance_eval do
-        define_method advised.new_method do | *args, &block |
+        define_method advised.new_meth do | *args, &block |
           ar = ActivationRecord.new(advised, self, args, block)
           
           # Proc to invoke the old method with :before and :after advise hooks.
           body = Proc.new do
-            self.__send__(advised.before_method, ar)
+            self.__send__(advised.before_meth, ar)
             begin
-              ar.result = self.__send__(advised.old_method, *ar.args, &ar.block)
+              ar.result = self.__send__(advised.old_meth, *ar.args, &ar.block)
             rescue Exception => err
               ar.error = err
             ensure
-              self.__send__(advised.after_method, ar)
+              self.__send__(advised.after_meth, ar)
             end
             ar.result
           end
           
           # Invoke the :around advice with the body Proc.
-          self.__send__(advised.around_method, ar, body)
+          self.__send__(advised.around_meth, ar, body)
           
           # Reraise Exception, if occured.
           raise ar.error if ar.error
@@ -354,6 +347,41 @@ class CheapAdvice
       self
     end
 
+    if RUBY_VERSION =~ /^1\.8/
+      def scope
+        @scope ||= @mutex.synchronize do
+          this = self
+          mod_target.instance_eval do 
+           case
+            when private_instance_methods(false).include?(this.meth.to_s)
+              :private
+            when protected_instance_methods(false).include?(this.meth.to_s)
+              :protected
+            else
+              :public
+            end
+          end
+          
+        end
+      end
+    else
+      def scope
+        @scope ||= @mutex.synchronize do
+          this = self
+          mod_target.instance_eval do 
+            case
+            when private_instance_methods(false).include?(this.meth)
+              :private
+            when protected_instance_methods(false).include?(this.meth)
+              :protected
+            else
+              :public
+            end
+          end
+        end
+      end     
+    end
+
     # Enables the advice on this method.
     def enable!
       @mutex.synchronize do
@@ -361,11 +389,24 @@ class CheapAdvice
 
         this = self
         mod_target.instance_eval do
-          alias_method this.old_method, this.method if 
-            method_defined? this.method and 
-            ! method_defined? this.old_method
+          case this.scope
+          when :public
+          else
+            public this.meth
+          end
+
+          alias_method this.old_meth, this.meth if 
+            ! method_defined? this.old_meth
           
-          alias_method this.method, this.new_method
+          alias_method this.meth, this.new_meth
+
+          case this.scope
+          when :private
+            private this.meth
+          when :protected
+            protected this.meth
+          end
+            
         end
 
         enabled!
@@ -382,8 +423,16 @@ class CheapAdvice
 
         this = self
         mod_target.instance_eval do
-          alias_method this.method, this.old_method if 
-            method_defined? this.old_method
+          if method_defined? this.old_meth
+            alias_method this.meth, this.old_meth
+            
+            case this.scope
+            when :private
+              private this.meth
+            when :protected
+              protected this.meth
+            end
+          end
         end
 
         disabled!
@@ -450,7 +499,7 @@ class CheapAdvice
     end
 
     # This methods are delegated to #advised.
-    DELEGATE_TO_ADVISED = [ :advice, :mod, :method, :kind, :method_to_s ]
+    DELEGATE_TO_ADVISED = [ :advice, :mod, :meth, :kind, :meth_to_s ]
     eval(DELEGATE_TO_ADVISED.map{|m| "def #{m}; @advised.#{m}; end; "} * "\n")
 
     # The call stack with CheapAdvice methods filtered out.

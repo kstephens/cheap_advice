@@ -15,8 +15,8 @@ class CheapAdvice
 
     class Foo
       include M
-      attr_accessor :foo
-      attr_reader :_baz
+      attr_accessor :foo, :bar
+      attr_reader :_baz, :_bar
       (class << self; self; end).instance_eval do 
         attr_accessor :_baz
       end
@@ -43,7 +43,28 @@ class CheapAdvice
       def baz(arg)
         @_baz = 7 + arg
       end
+
+      def calls_private_method(arg)
+        private_method(arg)
+      end
+                               
+      private
+      def private_method(arg)
+        arg
+      end
+
+      protected
+      def protected_method(arg)
+        arg
+      end
     end
+
+    class Baz < Bar
+      def calls_protected_method(arg)
+        protected_method(arg)
+      end
+    end
+
   end
 end
 
@@ -54,11 +75,11 @@ describe "CheapAdvice" do
 
   before(:each) do
     @tracing_advice = CheapAdvice.new(:around) do | ar, body |
-      ar.advice.log "  TRACE: before #{ar.rcvr.class}\##{ar.method}(#{ar.args.join(", ")})"
+      ar.advice.log "  TRACE: before #{ar.rcvr.class}\##{ar.meth}(#{ar.args.join(", ")})"
       ar.advice.log "         foo = #{@foo.inspect}"
       ar.advice.log "         bar = #{@bar.inspect}"
       result = body.call
-      ar.advice.log "  TRACE: after  #{ar.rcvr.class}\##{ar.method}(#{ar.args.join(", ")}) => #{result.inspect}"
+      ar.advice.log "  TRACE: after  #{ar.rcvr.class}\##{ar.meth}(#{ar.args.join(", ")}) => #{result.inspect}"
       ar.result = "yo!"
       ar.advice.log "  TRACE: return #{ar.result.inspect}"
       "oy!" # Not relevant.
@@ -121,7 +142,7 @@ describe "CheapAdvice" do
     basic_advice.advised.size.should == 1
     advised = basic_advice.advised.first
     advised.mod.should == CheapAdvice::Test::Foo
-    advised.method.should == :do_it
+    advised.meth.should == :do_it
     advised.enabled.should == true
     
     assert_do_it f
@@ -267,6 +288,54 @@ describe "CheapAdvice" do
     advice_called.should == 1
   end
 
+  it 'handles private method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!(CheapAdvice::Test::Bar, :private_method)
+    advised.scope.should == :private
+    null_advice.advised.size.should == 1
+
+    @b = CheapAdvice::Test::Bar.new
+
+    @b.calls_private_method(5).should == 5
+    advice_called.should == 1
+
+    advised.unadvise!
+
+    @b.calls_private_method(5).should == 5
+    advice_called.should == 1
+  end
+
+
+  it 'handles protected method advice.' do
+    advice_called = 0
+    null_advice = CheapAdvice.new(:before) do | ar |
+      advice_called += 1
+    end
+    null_advice.advised.size.should == 0
+
+    advice_called.should == 0
+    
+    advised = null_advice.advise!(CheapAdvice::Test::Bar, :protected_method)
+    advised.scope.should == :protected
+    null_advice.advised.size.should == 1
+
+    @b = CheapAdvice::Test::Baz.new
+
+    @b.calls_protected_method(5).should == 5
+    advice_called.should == 1
+
+    advised.unadvise!
+
+    @b.calls_protected_method(5).should == 5
+    advice_called.should == 1
+  end
 
 end
 

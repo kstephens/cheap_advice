@@ -5,14 +5,14 @@ h1. Cheap Advice
 
 * Kurt Stephens
 * Enova Financial
-* 2011/09/26
-* Slides -- TDB
-* Code -- "":http://github.com/kstephens/cheap_advice
+* RubyConf 2011
+* Slides -- "http://kurtstephens.com/pub/cheap_advice.slides/index.html":http://kurtstephens.com/pub/cheap_advice.slides/index.html
+* Code -- "http://github.com/kstephens/cheap_advice":http://github.com/kstephens/cheap_advice
 
 !SLIDE
-!TITLE Dumb Code is Clean Code
+!TITLE Clean Code
 
-h1. Dumb Code is Clean Code
+h1. Clean Code
 
 @@@ ruby
 
@@ -85,6 +85,47 @@ b.bar
 @@@
 
 !SLIDE
+!TITLE YUCK!
+
+h1. ...YUCK!
+
+@@@ ruby
+
+class MyClass
+  def foo
+    # YUCK!: raise "SecurityError" unless $roles.include?("MyClass#foo")
+    # YUCK!: $stderr.puts "#{self}#foo => 42"
+    42
+  end
+end
+class MyOtherClass
+  def bar
+    # YUCK!: raise "SecurityError" unless $roles.include?("MyClass#bar")
+    # YUCK!: $stderr.puts "#{self}#bar => 43"
+    43
+  end
+end
+a = MyClass.new
+b = MyOtherClass.new
+$roles = [ "MyClass#foo" ] # ???
+a.foo
+b.bar
+
+@@@
+
+
+!SLIDE
+!TITLE Dumb and Clean, Smart and Dirty
+
+h1. Dumb and Clean, Smart and Dirty
+
+* Real World is Smart Code.
+* Dumb Code is Clean, Smart Code is Dirty. 
+* Get Dirt Out Of Code -- (problem-domain vs. solution-domain) 
+* Sweep It Somewhere Else -- (modularize the smart dirt)
+* Don't be Dirty All the Time -- (dynamic, stateful dirt: logging, debugging, security, etc.)
+
+!SLIDE
 !TITLE Separation of Concerns
 
 h1. Separation of Concerns
@@ -147,8 +188,14 @@ b.bar
 
 h1. Security Advice
 
+You get the idea.
+
 !SLIDE
 !TITLE CheapAdvice
+
+h1. Questions?
+
+h1. Code!
 
 http://github.com/kstephens/cheap_advice
 

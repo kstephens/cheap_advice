@@ -58,3 +58,18 @@ Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
+
+$SCARLET = ENV['SCARLET'] ||= File.expand_path("../../scarlet/bin/scarlet", __FILE__)
+
+slides_src  = 'cheap_advice.slides.textile'
+slides_html = 'doc/cheap_advice.slides/index.html'
+file slides_html => slides_src do
+  slides_dir = File.dirname(slides_html)
+  sh "mkdir -p #{slides_dir}"
+  sh "#{$SCARLET} -f html -g #{slides_dir}"
+  sh "#{$SCARLET} -f html #{slides_src} > #{slides_html}"
+  sh "open #{slides_html}"
+end
+
+task :doc => slides_html
+

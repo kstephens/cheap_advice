@@ -10,11 +10,22 @@ h1. Cheap Advice
 * Code -- "":http://github.com/kstephens/cheap_advice
 
 !SLIDE
-!TITLE Advice
+!TITLE Dumb Code is Clean Code
 
-h1. Dumb code == Happy code
+h1. Dumb Code is Clean Code
 
 @@@ ruby
+
+class MyClass
+  def foo; 42; end
+end
+class MyOtherClass
+  def bar; 43; end
+end
+a = MyClass.new
+b = MyOtherClass.new
+a.foo
+b.bar
 
 @@@
 
@@ -25,6 +36,23 @@ h1. Add Logging
 
 @@@ ruby
 
+class MyClass
+  def foo
+    $stderr.puts "#{self}#foo => 42"
+    42
+  end
+end
+class MyOtherClass
+  def bar
+    $stderr.puts "#{self}#bar => 43"
+    43
+  end
+end
+a = MyClass.new
+b = MyOtherClass.new
+a.foo
+b.bar
+
 @@@
 
 !SLIDE
@@ -33,6 +61,26 @@ h1. Add Logging
 h1. Add Security
 
 @@@ ruby
+
+class MyClass
+  def foo
+    raise "SecurityError" unless $roles.include?("MyClass#foo")
+    $stderr.puts "#{self}#foo => 42"
+    42
+  end
+end
+class MyOtherClass
+  def bar
+    raise "SecurityError" unless $roles.include?("MyClass#bar")
+    $stderr.puts "#{self}#bar => 43"
+    43
+  end
+end
+a = MyClass.new
+b = MyOtherClass.new
+$roles = [ "MyClass#foo" ]
+a.foo
+b.bar
 
 @@@
 
@@ -61,6 +109,46 @@ h1. Advice != Aspects
 
 h1. Logging Advice
 
+@@@ ruby
+
+trace_advice = CheapAdvice.new(:around) do | ar, body |
+  ar.advice[:log] << 
+    "#{Time.now.iso8601(6)} " <<
+    "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id}\n"
+  body.call
+  ar.advice[:log] << 
+    "#{Time.now.iso8601(6)} " <<
+    "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id} " <<
+    "=> #{ar.result.inspect}\n"    
+end
+trace_advice[:log] = File.open("trace.log", "a+")
+
+@@@
+
 !SLIDE
-!TITLE Logging Advice
+!TITLE Applying Advice
+
+h1. Applying Advice
+
+@@@ ruby
+
+...
+trace_advice.advise!(MyClass, :foo)
+trace_advice.advise!(MyOtherClass, :bar)
+a.foo
+b.bar
+trace_advice.disable!
+a.foo
+b.bar
+@@@
+
+!SLIDE
+!TITLE Security Advice
+
+h1. Security Advice
+
+!SLIDE
+!TITLE CheapAdvice
+
+http://github.com/kstephens/cheap_advice
 

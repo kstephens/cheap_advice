@@ -1,8 +1,8 @@
 $: << File.expand_path('../../lib', __FILE__)
 
 require 'cheap_advice'
+require 'pp'
 require 'time'
-
  
 class MyClass
   def foo
@@ -20,21 +20,24 @@ a = MyClass.new
 b = MyOtherClass.new
 
 trace_advice = CheapAdvice.new(:around) do | ar, body |
-  ar.advice[:log].puts "#{Time.now.iso8601(6)} #{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id}"
+  ar.advice[:log] << "#{Time.now.iso8601(6)} " <<
+                     "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id}\n"
   body.call
-  ar.advice[:log].puts "#{Time.now.iso8601(6)} #{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id} => #{ar.result.inspect}"    
+  ar.advice[:log] << "#{Time.now.iso8601(6)} " <<
+                     "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id} " <<
+                     "=> #{ar.result.inspect}\n"    
 end
-trace_advice[:log] = File.open("trace.log", "a+")
+trace_advice[:log] = $stderr # File.open("trace.log", "a+")
 trace_advice.advise!(MyClass, :foo)
 trace_advice.advise!(MyOtherClass, :bar)
 
 
-a.foo
-b.bar
+pp a.foo
+pp b.bar
 
 trace_advice.disable!
 
-a.foo
-b.bar
+pp a.foo
+pp b.bar
 
 

@@ -476,6 +476,8 @@ class CheapAdvice
     # if not nil, Exception is reraised after the :around advice block.
     # Can be modified by the :after advice block.
     attr_accessor :error
+    alias :exception :error
+    alias :exception= :error=
 
     # Arbitrary data accessed by #[], #[]=.
     # Advice blocks can use this to pass data to other blocks.

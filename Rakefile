@@ -73,3 +73,7 @@ end
 
 task :doc => slides_html
 
+task :publish => :doc do
+  sh "rsync -aruzv doc/cheap_advice.slides/ kscom:kurtstephens.com/pub/cheap_advice.slides/"
+end
+

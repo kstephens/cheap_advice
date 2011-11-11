@@ -4,7 +4,7 @@
 h1. Cheap Advice
 
 * Kurt Stephens
-* Enova Financial
+* Enova Financial -- "http://enovafinancial.com":http://enovafinancial.com
 * RubyConf 2011
 * Slides -- "http://kurtstephens.com/pub/cheap_advice.slides/index.html":http://kurtstephens.com/pub/cheap_advice.slides/index.html
 * Code -- "http://github.com/kstephens/cheap_advice":http://github.com/kstephens/cheap_advice
@@ -159,10 +159,11 @@ h1. Advice != Aspects
 
 h1. Cheap Advice
 
-* Cheap Advice adds dynamic Advice to Ruby methods.
-* Cheap Advice is applied methods.
-* Cheap Advice are stateful objects.
-* Cheap Advice can be added and removed at run-time.
+* ... adds dynamic Advice to Ruby methods.
+* ... is applied to methods.
+* ... are stateful objects.
+* ... can be added and removed at run-time.
+* ... are configurable.
 
 !SLIDE
 !TITLE Logging Advice
@@ -205,6 +206,32 @@ b.bar
 trace_advice.disable!
 a.foo
 b.bar
+@@@
+
+!SLIDE
+!TITLE Configuration
+
+h1. Configuration
+
+@@@ yaml
+
+:advice:
+  ~:
+    :enabled: false
+    :options:
+      :trace:
+        :logger:
+          :name: :default
+
+  'MyClass':
+    :advice:  trace
+
+  'MyClass#foo':
+    :enabled: false
+
+  'MyClass#bar':
+    :enabled: false
+
 @@@
 
 !SLIDE

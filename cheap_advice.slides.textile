@@ -136,14 +136,33 @@ h1. Separation of Concerns
 ... are not problem-domain issues.
 
 !SLIDE
+!TITLE Advice
+
+h1. Advice
+
+* Commonplace in the Lisp world, (esp. Emacs).
+* Advice is function that wraps another function: "before", "after" or "around".
+* Advice can be added or removed at run-time.
+
+!SLIDE
 !TITLE Advice != Aspects
 
 h1. Advice != Aspects
 
 * Aspects are woven into code based on complex "codepoint" criteria at build-time (or load-time).
-* Advice is applied to a more well-known construct: methods.
+* Advice is applied to a more well-known constructs: applicable objects: functions, methods, etc.
 * Advice are objects.
 * Advice can be added and removed at run-time.
+
+!SLIDE
+!TITLE Cheap Advice
+
+h1. Cheap Advice
+
+* Cheap Advice adds dynamic Advice to Ruby methods.
+* Cheap Advice is applied methods.
+* Cheap Advice are stateful objects.
+* Cheap Advice can be added and removed at run-time.
 
 !SLIDE
 !TITLE Logging Advice
@@ -152,6 +171,7 @@ h1. Logging Advice
 
 @@@ ruby
 
+# Advice 
 trace_advice = CheapAdvice.new(:around) do | ar, body |
   ar.advice[:log] << 
     "#{Time.now.iso8601(6)} " <<
@@ -162,6 +182,7 @@ trace_advice = CheapAdvice.new(:around) do | ar, body |
     "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id} " <<
     "=> #{ar.result.inspect}\n"    
 end
+# State attached to trace_advice.
 trace_advice[:log] = File.open("trace.log", "a+")
 
 @@@
@@ -174,10 +195,13 @@ h1. Applying Advice
 @@@ ruby
 
 ...
+# Activate trace_advice:
 trace_advice.advise!(MyClass, :foo)
 trace_advice.advise!(MyOtherClass, :bar)
 a.foo
 b.bar
+
+# Disable trace_advice:
 trace_advice.disable!
 a.foo
 b.bar
@@ -189,6 +213,11 @@ b.bar
 h1. Security Advice
 
 You get the idea.
+
+!SLIDE
+!TITLE Example
+
+h1. See example/ex01.rb
 
 !SLIDE
 !TITLE CheapAdvice

@@ -28,16 +28,24 @@ trace_advice = CheapAdvice.new(:around) do | ar, body |
                      "=> #{ar.result.inspect}\n"    
 end
 trace_advice[:log] = $stderr # File.open("trace.log", "a+")
+
+puts "\nWithout advice:"
+pp a.foo
+pp b.bar
+
+puts "\nWith advice enabled:"
 trace_advice.advise!(MyClass, :foo)
 trace_advice.advise!(MyOtherClass, :bar)
-
-
 pp a.foo
 pp b.bar
 
+puts "\nWith advice disabled:"
 trace_advice.disable!
-
 pp a.foo
 pp b.bar
 
+puts "\nWith advice re-enabled:"
+trace_advice.enable!
+pp a.foo
+pp b.bar
 

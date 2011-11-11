@@ -25,7 +25,7 @@ trace_advice = CheapAdvice.new(:around) do | ar, body |
   body.call
   ar.advice[:log] << "#{Time.now.iso8601(6)} " <<
                      "#{ar.rcvr.class} #{ar.meth} #{ar.rcvr.object_id} " <<
-                     "=> #{ar.result.inspect}\n"    
+                     "=> #{ar.result.inspect}\n"
 end
 trace_advice[:log] = $stderr # File.open("trace.log", "a+")
 

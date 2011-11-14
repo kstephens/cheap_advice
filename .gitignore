@@ -45,3 +45,4 @@ trace.log
 #
 # For vim:
 #*.swp
+Gemfile.lock

@@ -15,8 +15,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "cheap_advice"
   gem.homepage = "http://github.com/kstephens/cheap_advice"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Add dynamic advice wrappers to methods.}
+  gem.description = %Q{http://kurtstephens.com/pub/cheap_advice.slides/index.html}
   gem.email = "ks.github@kurtstephens.com"
   gem.authors = ["Kurt Stephens"]
   # Include your dependencies below. Runtime dependencies are required when using your gem,

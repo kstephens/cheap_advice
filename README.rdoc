@@ -52,7 +52,11 @@ trace.log will contain something like:
 == Issues
 
 * Rails-type autoloading can confuse CheapAdvice.
-  
+
+== Slides
+
+* http://kurtstephens.com/pub/cheap_advice.slides/index.html
+
 == Contributing to cheap_advice
  
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
